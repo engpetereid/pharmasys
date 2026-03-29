@@ -1,0 +1,608 @@
+{
+  "tech_stack": [
+    "PHP",
+    "Laravel",
+    "SQLite/MySQL",
+    "Blade Templates",
+    "TailwindCSS",
+    "AlpineJS",
+    "Vite",
+    "DomPDF",
+    "Arabic PHP Library"
+  ],
+  "features": [
+    {
+      "name": "Authentication",
+      "description": "User authentication system with role-based access control (admin, accountant). Includes login, logout, registration, password reset, and email verification.",
+      "files": [
+        "app/Http/Controllers/Auth/AuthenticatedSessionController.php",
+        "app/Http/Controllers/Auth/RegisteredUserController.php",
+        "app/Http/Controllers/Auth/PasswordResetLinkController.php",
+        "app/Http/Controllers/Auth/NewPasswordController.php",
+        "app/Http/Controllers/Auth/VerifyEmailController.php",
+        "routes/auth.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/login": {
+            "get": {
+              "summary": "Show login form",
+              "tags": ["Authentication"]
+            },
+            "post": {
+              "summary": "Authenticate user",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "email": {"type": "string", "format": "email"},
+                        "password": {"type": "string"},
+                        "remember": {"type": "boolean"}
+                      },
+                      "required": ["email", "password"]
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "302": {"description": "Redirect to dashboard based on role"}
+              }
+            }
+          },
+          "/register": {
+            "get": {"summary": "Show registration form"},
+            "post": {
+              "summary": "Register new user",
+              "requestBody": {
+                "content": {
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {"type": "string"},
+                        "email": {"type": "string", "format": "email"},
+                        "password": {"type": "string"},
+                        "password_confirmation": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/logout": {
+            "post": {"summary": "Logout user"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Admin Dashboard",
+      "description": "Main dashboard displaying sales statistics, risky zones, top performers (pharmacists, doctors, representatives), latest invoices, overdue invoices, and high discount pharmacists. Supports filtering by month and year. Includes line-specific dashboards.",
+      "files": [
+        "app/Http/Controllers/Admin/DashboardController.php",
+        "resources/views/admin/dashboard.blade.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin": {
+            "get": {
+              "summary": "Display admin dashboard",
+              "parameters": [
+                {"name": "month", "in": "query", "schema": {"type": "integer"}},
+                {"name": "year", "in": "query", "schema": {"type": "integer"}}
+              ]
+            }
+          },
+          "/admin/dashboard/line/{id}": {
+            "get": {
+              "summary": "Display line-specific dashboard",
+              "parameters": [
+                {"name": "id", "in": "path", "required": true, "schema": {"type": "integer", "enum": [1, 2]}},
+                {"name": "month", "in": "query", "schema": {"type": "integer"}},
+                {"name": "year", "in": "query", "schema": {"type": "integer"}}
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Drugs Management",
+      "description": "CRUD operations for managing drugs. Each drug has name, price, and line (1 or 2). Includes sales history and statistics per drug.",
+      "files": [
+        "app/Http/Controllers/Admin/DrugController.php",
+        "app/Models/Drug.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/drugs": {
+            "get": {"summary": "List all drugs"},
+            "post": {
+              "summary": "Create new drug",
+              "requestBody": {
+                "content": {
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {"type": "string"},
+                        "price": {"type": "number"},
+                        "line": {"type": "integer", "enum": [1, 2]}
+                      },
+                      "required": ["name", "price", "line"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/admin/drugs/{id}": {
+            "get": {"summary": "Show drug details with sales history"},
+            "put": {"summary": "Update drug"},
+            "delete": {"summary": "Delete drug"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Invoices Management",
+      "description": "Complete invoice management system. Create, edit, delete, view invoices. Supports filtering by date, center, zone, pharmacist, doctor, representative, status, line. Includes PDF generation, CSV export, warehouse stock deduction, doctor deal tracking, and payment status management.",
+      "files": [
+        "app/Http/Controllers/Admin/InvoiceController.php",
+        "app/Models/Invoice.php",
+        "app/Models/InvoiceDetail.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/invoices": {
+            "get": {
+              "summary": "List invoices with filtering",
+              "parameters": [
+                {"name": "start_date", "in": "query"},
+                {"name": "end_date", "in": "query"},
+                {"name": "center_id", "in": "query"},
+                {"name": "zone_id", "in": "query"},
+                {"name": "pharmacist_id", "in": "query"},
+                {"name": "doctor_id", "in": "query"},
+                {"name": "representative_id", "in": "query"},
+                {"name": "status", "in": "query"},
+                {"name": "line", "in": "query"},
+                {"name": "serial_number", "in": "query"}
+              ]
+            },
+            "post": {
+              "summary": "Create new invoice",
+              "requestBody": {
+                "content": {
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "serial_number": {"type": "string"},
+                        "invoice_date": {"type": "string", "format": "date"},
+                        "line": {"type": "integer", "enum": [1, 2]},
+                        "pharmacist_id": {"type": "integer"},
+                        "doctor_id": {"type": "integer"},
+                        "status": {"type": "integer", "enum": [1, 2, 3]},
+                        "paid_amount": {"type": "number"},
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drug_id": {"type": "integer"},
+                              "quantity": {"type": "number"},
+                              "pharmacist_discount_percentage": {"type": "number"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/admin/invoices/{id}": {
+            "get": {"summary": "Show invoice details"},
+            "put": {"summary": "Update invoice"},
+            "delete": {"summary": "Delete invoice"}
+          },
+          "/admin/invoices/export": {
+            "get": {"summary": "Export invoices to CSV"}
+          },
+          "/admin/invoices/{id}/pdf": {
+            "get": {"summary": "Generate PDF for invoice"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Provinces Management",
+      "description": "CRUD operations for managing provinces (administrative regions).",
+      "files": [
+        "app/Http/Controllers/Admin/ProvinceController.php",
+        "app/Models/Province.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/provinces": {
+            "get": {"summary": "List provinces"},
+            "post": {"summary": "Create province"}
+          },
+          "/admin/provinces/{id}": {
+            "get": {"summary": "Show province"},
+            "put": {"summary": "Update province"},
+            "delete": {"summary": "Delete province"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Centers Management",
+      "description": "CRUD operations for managing centers (medical centers/pharmacies) within provinces.",
+      "files": [
+        "app/Http/Controllers/Admin/CenterController.php",
+        "app/Models/Center.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/centers": {
+            "get": {"summary": "List centers"},
+            "post": {"summary": "Create center"}
+          },
+          "/admin/centers/{id}": {
+            "get": {"summary": "Show center"},
+            "put": {"summary": "Update center"},
+            "delete": {"summary": "Delete center"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Pharmacists Management",
+      "description": "CRUD operations for managing pharmacists linked to centers.",
+      "files": [
+        "app/Http/Controllers/Admin/PharmacistController.php",
+        "app/Models/Pharmacist.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/pharmacists": {
+            "get": {"summary": "List pharmacists"},
+            "post": {"summary": "Create pharmacist"}
+          },
+          "/admin/pharmacists/{id}": {
+            "get": {"summary": "Show pharmacist"},
+            "put": {"summary": "Update pharmacist"},
+            "delete": {"summary": "Delete pharmacist"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Doctors Management",
+      "description": "CRUD operations for managing doctors linked to centers. Doctors can have deals and commissions.",
+      "files": [
+        "app/Http/Controllers/Admin/DoctorController.php",
+        "app/Models/Doctor.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/doctors": {
+            "get": {"summary": "List doctors"},
+            "post": {"summary": "Create doctor"}
+          },
+          "/admin/doctors/{id}": {
+            "get": {"summary": "Show doctor"},
+            "put": {"summary": "Update doctor"},
+            "delete": {"summary": "Delete doctor"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Representatives Management",
+      "description": "CRUD operations for managing sales and medical representatives.",
+      "files": [
+        "app/Http/Controllers/Admin/RepresentativeController.php",
+        "app/Models/Representative.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/representatives": {
+            "get": {"summary": "List representatives"},
+            "post": {"summary": "Create representative"}
+          },
+          "/admin/representatives/{id}": {
+            "get": {"summary": "Show representative"},
+            "put": {"summary": "Update representative"},
+            "delete": {"summary": "Delete representative"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Zones Management",
+      "description": "CRUD operations for managing zones. Zones are linked to warehouses, centers, and representatives. Each zone belongs to a line (1 or 2).",
+      "files": [
+        "app/Http/Controllers/Admin/ZoneController.php",
+        "app/Models/Zone.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/zones": {
+            "get": {"summary": "List zones"},
+            "post": {"summary": "Create zone"}
+          },
+          "/admin/zones/{id}": {
+            "get": {"summary": "Show zone"},
+            "put": {"summary": "Update zone"},
+            "delete": {"summary": "Delete zone"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Zone Expenses",
+      "description": "Manage expenses for zones. Create and delete zone expenses with date and amount tracking.",
+      "files": [
+        "app/Http/Controllers/Admin/ZoneExpenseController.php",
+        "app/Models/ZoneExpense.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/zones/{id}/expenses/create": {
+            "get": {"summary": "Show create expense form"}
+          },
+          "/admin/zones/{id}/expenses": {
+            "post": {
+              "summary": "Create zone expense",
+              "requestBody": {
+                "content": {
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "expense_date": {"type": "string", "format": "date"},
+                        "amount": {"type": "number"},
+                        "description": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/admin/expenses/{id}": {
+            "delete": {"summary": "Delete zone expense"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Doctor Deals",
+      "description": "Manage doctor deals/commissions. Create deals with target amounts, commission percentages, linked pharmacists and drugs. Track achieved amounts and payment status.",
+      "files": [
+        "app/Http/Controllers/Admin/DoctorDealController.php",
+        "app/Models/DoctorDeal.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/deals": {
+            "get": {
+              "summary": "List doctor deals",
+              "parameters": [
+                {"name": "search", "in": "query"},
+                {"name": "status", "in": "query"},
+                {"name": "zone_id", "in": "query"}
+              ]
+            },
+            "post": {
+              "summary": "Create doctor deal",
+              "requestBody": {
+                "content": {
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "doctor_id": {"type": "integer"},
+                        "target_amount": {"type": "number"},
+                        "commission_percentage": {"type": "number"},
+                        "commission_amount": {"type": "number"},
+                        "start_date": {"type": "string", "format": "date"},
+                        "status": {"type": "integer"},
+                        "pharmacists": {"type": "array"},
+                        "drugs": {"type": "array"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/admin/deals/{id}": {
+            "get": {"summary": "Show deal details"},
+            "put": {"summary": "Update deal"},
+            "delete": {"summary": "Delete deal"}
+          },
+          "/admin/deals/{id}/pay": {
+            "post": {"summary": "Mark deal as paid"}
+          },
+          "/admin/deals/{id}/invoices": {
+            "get": {"summary": "Show invoices related to deal"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Warehouses Management",
+      "description": "Manage warehouses (main and sub warehouses). Track drug inventory, add stock, return stock. Warehouses are linked to zones.",
+      "files": [
+        "app/Http/Controllers/Admin/WarehouseController.php",
+        "app/Models/Warehouse.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/warehouses": {
+            "get": {"summary": "List warehouses"},
+            "post": {"summary": "Create warehouse"}
+          },
+          "/admin/warehouses/{id}": {
+            "get": {"summary": "Show warehouse with inventory"},
+            "put": {"summary": "Update warehouse"},
+            "delete": {"summary": "Delete warehouse"}
+          },
+          "/admin/warehouses/{id}/stock/add": {
+            "get": {"summary": "Show add stock form"},
+            "post": {"summary": "Add stock to warehouse"}
+          },
+          "/admin/warehouses/{id}/stock/return": {
+            "get": {"summary": "Show return stock form"},
+            "post": {"summary": "Return stock from warehouse"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Reports - Pharmacies",
+      "description": "Generate reports for pharmacies by province, center, and individual pharmacist. Shows sales statistics and invoice details.",
+      "files": [
+        "app/Http/Controllers/Admin/ReportController.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/reports": {
+            "get": {
+              "summary": "List provinces with sales statistics",
+              "parameters": [
+                {"name": "line", "in": "query"}
+              ]
+            }
+          },
+          "/admin/reports/province/{id}": {
+            "get": {"summary": "Show province report with centers"}
+          },
+          "/admin/reports/center/{id}": {
+            "get": {"summary": "Show center report with pharmacists"}
+          },
+          "/admin/reports/pharmacist/{id}": {
+            "get": {"summary": "Show pharmacist report with invoices"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Reports - Representatives",
+      "description": "Generate reports for sales and medical representatives showing their performance and sales statistics.",
+      "files": [
+        "app/Http/Controllers/Admin/ReportController.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/reports/representatives": {
+            "get": {"summary": "List representatives with sales statistics"}
+          },
+          "/admin/reports/representatives/{id}": {
+            "get": {"summary": "Show representative detailed report"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Reports - Doctors",
+      "description": "Generate reports for doctors showing their sales, commissions, and balance. Includes payment functionality for doctor commissions.",
+      "files": [
+        "app/Http/Controllers/Admin/ReportController.php",
+        "app/Http/Controllers/Admin/DoctorBalanceController.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/reports/doctors": {
+            "get": {
+              "summary": "List provinces with doctor statistics",
+              "parameters": [
+                {"name": "line", "in": "query"}
+              ]
+            }
+          },
+          "/admin/reports/doctors/province/{id}": {
+            "get": {"summary": "Show province doctors report"}
+          },
+          "/admin/reports/doctors/center/{id}": {
+            "get": {"summary": "Show center doctors report"}
+          },
+          "/admin/reports/doctors/doctor/{id}": {
+            "get": {"summary": "Show doctor detailed report"},
+            "post": {"summary": "Pay doctor commission"}
+          },
+          "/admin/reports/doctors-balance": {
+            "get": {"summary": "Show doctors balance report"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Reports - Zone Risk",
+      "description": "Generate zone risk reports showing zones with high risk ratios (discount percentage + expense ratio). Includes export functionality.",
+      "files": [
+        "app/Http/Controllers/Admin/ZoneReportController.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/reports/zone-risk": {
+            "get": {"summary": "List risky zones"},
+            "parameters": [
+              {"name": "month", "in": "query"},
+              {"name": "year", "in": "query"}
+            ]
+          },
+          "/admin/reports/zone-risk/export": {
+            "get": {"summary": "Export zone risk report"}
+          },
+          "/admin/reports/zone-risk/{id}": {
+            "get": {"summary": "Show zone risk details"}
+          }
+        }
+      }
+    },
+    {
+      "name": "Profile Management",
+      "description": "User profile management - edit profile information and update password.",
+      "files": [
+        "app/Http/Controllers/ProfileController.php"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/profile": {
+            "get": {"summary": "Show profile edit form"},
+            "patch": {"summary": "Update profile"},
+            "delete": {"summary": "Delete profile"}
+          }
+        }
+      }
+    }
+  ]
+}

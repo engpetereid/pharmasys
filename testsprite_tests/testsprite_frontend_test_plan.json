@@ -1,0 +1,668 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Login Success",
+    "description": "Verify that a user can log in successfully with valid credentials and appropriate role.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid username and password for an admin user"
+      },
+      {
+        "type": "action",
+        "description": "Click login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that login is successful and user is redirected to the correct dashboard"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Login Failure with Invalid Credentials",
+    "description": "Verify that login fails when incorrect username or password is provided.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid username and/or password"
+      },
+      {
+        "type": "action",
+        "description": "Click login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that login fails and appropriate error message is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Registration Success",
+    "description": "Verify that new user registration completes successfully with valid data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to registration page"
+      },
+      {
+        "type": "action",
+        "description": "Fill out registration form with valid information"
+      },
+      {
+        "type": "action",
+        "description": "Submit registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm registration success message and email verification triggered"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Password Reset Flow",
+    "description": "Verify password reset process is working correctly via email link.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page and click 'Forgot Password'"
+      },
+      {
+        "type": "action",
+        "description": "Submit registered email for password reset"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password reset email is sent to user"
+      },
+      {
+        "type": "action",
+        "description": "Open email and follow password reset link"
+      },
+      {
+        "type": "action",
+        "description": "Enter new password and confirm"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password reset success and user can log in with new password"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Access Control for Protected Pages",
+    "description": "Verify that users without authentication cannot access protected pages and are redirected to login.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access admin dashboard URL without being logged in"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify redirect to login page"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access drugs management pages without authentication"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify redirect to login page"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Admin Dashboard Data Display with Filters",
+    "description": "Verify that sales statistics, risky zones, top performers, and invoices display correctly with month and year filtering.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as admin user"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to admin dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sales statistics, risky zones, top performers, latest and overdue invoices are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Apply month filter and verify data updates accordingly"
+      },
+      {
+        "type": "action",
+        "description": "Apply year filter and verify data updates accordingly"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to a line-specific dashboard (line 1 or 2)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard shows data filtered by selected line"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Drugs Management CRUD Operations",
+    "description": "Verify creating, reading, updating, and deleting drugs including validation of mandatory fields.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as admin user"
+      },
+      {
+        "type": "action",
+        "description": "Create a new drug with valid name, price, and line"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify drug is successfully created and listed"
+      },
+      {
+        "type": "action",
+        "description": "Fetch drug details by ID"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify response contains correct drug data and sales history"
+      },
+      {
+        "type": "action",
+        "description": "Update the drug with new price and name"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify drug data is updated successfully"
+      },
+      {
+        "type": "action",
+        "description": "Delete the drug"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify drug is removed from the list and database"
+      },
+      {
+        "type": "action",
+        "description": "Attempt creating a drug with missing mandatory fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appropriate validation error messages are shown"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Invoices Management Full Workflow",
+    "description": "Verify creating, updating, deleting invoices, filtering, PDF generation, CSV export, and warehouse stock deduction.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as admin user"
+      },
+      {
+        "type": "action",
+        "description": "Create a new invoice with valid data including drugs, quantities, and linked doctor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invoice is saved and warehouse stock is correctly deducted"
+      },
+      {
+        "type": "action",
+        "description": "Retrieve invoice by ID and verify details"
+      },
+      {
+        "type": "action",
+        "description": "Update invoice data (e.g., change quantities or drugs)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invoice is updated and stock changes are reflected correctly"
+      },
+      {
+        "type": "action",
+        "description": "Delete an invoice"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invoice is deleted and warehouse stock is restored"
+      },
+      {
+        "type": "action",
+        "description": "Apply invoice filtering by date range, doctor, and status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtered invoices are displayed correctly"
+      },
+      {
+        "type": "action",
+        "description": "Generate PDF for an invoice"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify PDF is generated with correct invoice details"
+      },
+      {
+        "type": "action",
+        "description": "Export invoices CSV"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify CSV export contains expected invoices data"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Provinces Management CRUD",
+    "description": "Verify create, read, update, delete operations for provinces with validation.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new province with valid name"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm new province is added"
+      },
+      {
+        "type": "action",
+        "description": "View a province by ID"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify province data matches expected"
+      },
+      {
+        "type": "action",
+        "description": "Update province name"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify update is successful"
+      },
+      {
+        "type": "action",
+        "description": "Delete a province"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify province removal from list"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Profile Update and Password Change",
+    "description": "Verify user can update profile details and successfully change password.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as any authenticated user"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to profile page"
+      },
+      {
+        "type": "action",
+        "description": "Update profile details such as name or email"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify profile updates are saved successfully"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to change password with correct current password and new password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password is changed successfully and user can log in with new password"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to change password with incorrect current password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message is displayed and password is not changed"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Warehouse Stock Addition and Return",
+    "description": "Verify stock addition and stock return operations in warehouses update drug inventory correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to a specific warehouse stock add page"
+      },
+      {
+        "type": "action",
+        "description": "Add stock for a drug with valid quantity"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify stock level for drug in warehouse is increased accordingly"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the warehouse stock return page"
+      },
+      {
+        "type": "action",
+        "description": "Return stock for a drug with valid quantity"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify stock level for drug is decreased accordingly but not below zero"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to return stock quantity greater than available"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error is shown and operation is prevented"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Zone Management and Expense Tracking",
+    "description": "Verify CRUD for zones and management of zone expenses with correct date and amount tracking.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new zone with valid attributes and line assignment"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm zone appears in list and has correct line info"
+      },
+      {
+        "type": "action",
+        "description": "Add expenses to a zone with date and amount"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify expense records are created and retrievable"
+      },
+      {
+        "type": "action",
+        "description": "Delete a zone expense"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify expense record is removed successfully"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Doctor Deals CRUD and Payment",
+    "description": "Verify creating, viewing, updating, deleting doctor deals and processing payments correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create doctor deal with targets, commission percentage, linked pharmacists and drugs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify deal is saved and accurately linked"
+      },
+      {
+        "type": "action",
+        "description": "View existing doctor deal by ID"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all deal details are accurate"
+      },
+      {
+        "type": "action",
+        "description": "Update the deal with new target amounts or commission rate"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates persist correctly"
+      },
+      {
+        "type": "action",
+        "description": "Process a payment for the doctor deal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment is recorded and balances updated"
+      },
+      {
+        "type": "action",
+        "description": "Delete a doctor deal"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm deal is removed and no residual data remains"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Reports Generation and Data Accuracy - Pharmacies",
+    "description": "Verify reports for pharmacies generate correctly filtered sales statistics by province, center, and pharmacist.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to reports section"
+      },
+      {
+        "type": "action",
+        "description": "Generate report filtered by province"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report displays correct sales stats for selected province"
+      },
+      {
+        "type": "action",
+        "description": "Generate report filtered by center"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report displays correct sales stats for selected center"
+      },
+      {
+        "type": "action",
+        "description": "Generate report filtered by pharmacist"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report displays correct sales stats for selected pharmacist"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Reports Generation and Data Accuracy - Representatives",
+    "description": "Verify sales and medical representatives reports show correct performance and sales statistics.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to representatives report page"
+      },
+      {
+        "type": "action",
+        "description": "Generate main representatives performance report"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify data for all representatives is accurate"
+      },
+      {
+        "type": "action",
+        "description": "Generate detailed report for a specific representative"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report content matches representative performance data"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Reports Generation and Payment - Doctors",
+    "description": "Verify reports for doctors include sales, commissions, balances and support payment transaction.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Generate doctors report overall and filtered by province and center"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all sales and commissions data are accurate"
+      },
+      {
+        "type": "action",
+        "description": "View detailed report for a specific doctor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify detailed balances and commission calculations"
+      },
+      {
+        "type": "action",
+        "description": "Process payment for a doctor's commission"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment updates doctor balance correctly"
+      },
+      {
+        "type": "action",
+        "description": "Generate doctors balance report"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report accurately reflects outstanding balances"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Zone Risk Report and Export",
+    "description": "Verify zone risk report shows zones with high risk ratios and exports data correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to zone risk report page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report lists zones with discount and expense risk ratios"
+      },
+      {
+        "type": "action",
+        "description": "View detailed report for a specific zone"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify detailed risk information is correct"
+      },
+      {
+        "type": "action",
+        "description": "Export zone risk report"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify export file contains complete and accurate data"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Edge Case: Invalid Data Submission to CRUD APIs",
+    "description": "Verify system handles invalid or malformed data for all CRUD endpoints gracefully with proper validation errors.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to create resources (drug, province, center, doctor, etc.) with missing required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are returned indicating missing required fields"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to update resources with invalid data e.g. negative price or invalid email"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors and no database changes are made"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access or delete resources using invalid or non-existent IDs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify 404 or appropriate error responses are received"
+      }
+    ]
+  }
+]

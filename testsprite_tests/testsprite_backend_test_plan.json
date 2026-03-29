@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "test_user_authentication_endpoints",
+    "description": "Verify user authentication endpoints including login, logout, registration, password reset, and email verification for role-based access control with roles admin and accountant."
+  },
+  {
+    "id": "TC002",
+    "title": "test_admin_dashboard_endpoints",
+    "description": "Verify the main admin dashboard and line-specific dashboard endpoints for correct display of sales statistics, risky zones, top performers, latest invoices, and overdue invoices with month/year filtering."
+  },
+  {
+    "id": "TC003",
+    "title": "test_drugs_management_endpoints",
+    "description": "Verify CRUD operations for drugs including creation, retrieval, update, deletion, and sales history per drug with correct handling of drug name, price, and line (1 or 2)."
+  },
+  {
+    "id": "TC004",
+    "title": "test_invoices_management_endpoints",
+    "description": "Verify complete invoice management including filtering, PDF generation, CSV export, warehouse stock deduction, and doctor deal tracking through all invoice related endpoints."
+  },
+  {
+    "id": "TC005",
+    "title": "test_provinces_management_endpoints",
+    "description": "Verify CRUD operations for provinces including creation, retrieval, update, and deletion of administrative regions."
+  },
+  {
+    "id": "TC006",
+    "title": "test_centers_management_endpoints",
+    "description": "Verify CRUD operations for centers within provinces including creation, retrieval, update, and deletion."
+  },
+  {
+    "id": "TC007",
+    "title": "test_pharmacists_management_endpoints",
+    "description": "Verify CRUD operations for pharmacists linked to centers including creation, retrieval, update, and deletion."
+  },
+  {
+    "id": "TC008",
+    "title": "test_doctors_management_endpoints",
+    "description": "Verify CRUD operations for doctors linked to centers including deals and commissions with creation, retrieval, update, and deletion."
+  },
+  {
+    "id": "TC009",
+    "title": "test_representatives_management_endpoints",
+    "description": "Verify CRUD operations for sales and medical representatives including creation, retrieval, update, and deletion."
+  },
+  {
+    "id": "TC010",
+    "title": "test_zones_management_endpoints",
+    "description": "Verify CRUD operations for zones linked to warehouses, centers, and representatives including creation, retrieval, update, and deletion with line 1 or 2 association."
+  }
+]

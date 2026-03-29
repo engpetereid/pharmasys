@@ -1,0 +1,234 @@
+{
+  "project_name": "Pharmasys - Pharmacy Management System",
+  "description": "A comprehensive Laravel-based pharmacy management system for managing drugs, invoices, doctors, pharmacists, representatives, zones, warehouses, and generating various reports.",
+  "tech_stack": [
+    "PHP 8.2",
+    "Laravel 12",
+    "SQLite/MySQL",
+    "Blade Templates",
+    "TailwindCSS",
+    "AlpineJS",
+    "Vite",
+    "DomPDF",
+    "Arabic PHP Library"
+  ],
+  "features": [
+    {
+      "name": "Authentication",
+      "description": "User authentication with role-based access control (admin, accountant). Login, logout, registration, password reset, email verification.",
+      "endpoints": [
+        "GET /login",
+        "POST /login",
+        "GET /register",
+        "POST /register",
+        "POST /logout"
+      ]
+    },
+    {
+      "name": "Admin Dashboard",
+      "description": "Main dashboard with sales statistics, risky zones, top performers, latest invoices, overdue invoices. Supports month/year filtering and line-specific dashboards.",
+      "endpoints": [
+        "GET /admin",
+        "GET /admin/dashboard/line/{id}"
+      ]
+    },
+    {
+      "name": "Drugs Management",
+      "description": "CRUD operations for drugs with name, price, and line (1 or 2). Includes sales history per drug.",
+      "endpoints": [
+        "GET /admin/drugs",
+        "POST /admin/drugs",
+        "GET /admin/drugs/{id}",
+        "PUT /admin/drugs/{id}",
+        "DELETE /admin/drugs/{id}"
+      ]
+    },
+    {
+      "name": "Invoices Management",
+      "description": "Complete invoice management with filtering, PDF generation, CSV export, warehouse stock deduction, doctor deal tracking.",
+      "endpoints": [
+        "GET /admin/invoices",
+        "POST /admin/invoices",
+        "GET /admin/invoices/{id}",
+        "PUT /admin/invoices/{id}",
+        "DELETE /admin/invoices/{id}",
+        "GET /admin/invoices/export",
+        "GET /admin/invoices/{id}/pdf"
+      ]
+    },
+    {
+      "name": "Provinces Management",
+      "description": "CRUD for provinces (administrative regions).",
+      "endpoints": [
+        "GET /admin/provinces",
+        "POST /admin/provinces",
+        "GET /admin/provinces/{id}",
+        "PUT /admin/provinces/{id}",
+        "DELETE /admin/provinces/{id}"
+      ]
+    },
+    {
+      "name": "Centers Management",
+      "description": "CRUD for centers (medical centers/pharmacies) within provinces.",
+      "endpoints": [
+        "GET /admin/centers",
+        "POST /admin/centers",
+        "GET /admin/centers/{id}",
+        "PUT /admin/centers/{id}",
+        "DELETE /admin/centers/{id}"
+      ]
+    },
+    {
+      "name": "Pharmacists Management",
+      "description": "CRUD for pharmacists linked to centers.",
+      "endpoints": [
+        "GET /admin/pharmacists",
+        "POST /admin/pharmacists",
+        "GET /admin/pharmacists/{id}",
+        "PUT /admin/pharmacists/{id}",
+        "DELETE /admin/pharmacists/{id}"
+      ]
+    },
+    {
+      "name": "Doctors Management",
+      "description": "CRUD for doctors linked to centers with deals and commissions.",
+      "endpoints": [
+        "GET /admin/doctors",
+        "POST /admin/doctors",
+        "GET /admin/doctors/{id}",
+        "PUT /admin/doctors/{id}",
+        "DELETE /admin/doctors/{id}"
+      ]
+    },
+    {
+      "name": "Representatives Management",
+      "description": "CRUD for sales and medical representatives.",
+      "endpoints": [
+        "GET /admin/representatives",
+        "POST /admin/representatives",
+        "GET /admin/representatives/{id}",
+        "PUT /admin/representatives/{id}",
+        "DELETE /admin/representatives/{id}"
+      ]
+    },
+    {
+      "name": "Zones Management",
+      "description": "CRUD for zones linked to warehouses, centers, and representatives. Each zone belongs to line 1 or 2.",
+      "endpoints": [
+        "GET /admin/zones",
+        "POST /admin/zones",
+        "GET /admin/zones/{id}",
+        "PUT /admin/zones/{id}",
+        "DELETE /admin/zones/{id}"
+      ]
+    },
+    {
+      "name": "Zone Expenses",
+      "description": "Manage expenses for zones with date and amount tracking.",
+      "endpoints": [
+        "GET /admin/zones/{id}/expenses/create",
+        "POST /admin/zones/{id}/expenses",
+        "DELETE /admin/expenses/{id}"
+      ]
+    },
+    {
+      "name": "Doctor Deals",
+      "description": "Manage doctor deals/commissions with target amounts, commission percentages, linked pharmacists and drugs.",
+      "endpoints": [
+        "GET /admin/deals",
+        "POST /admin/deals",
+        "GET /admin/deals/{id}",
+        "PUT /admin/deals/{id}",
+        "DELETE /admin/deals/{id}",
+        "POST /admin/deals/{id}/pay",
+        "GET /admin/deals/{id}/invoices"
+      ]
+    },
+    {
+      "name": "Warehouses Management",
+      "description": "Manage warehouses (main and sub) with drug inventory, stock addition, and returns.",
+      "endpoints": [
+        "GET /admin/warehouses",
+        "POST /admin/warehouses",
+        "GET /admin/warehouses/{id}",
+        "PUT /admin/warehouses/{id}",
+        "DELETE /admin/warehouses/{id}",
+        "GET /admin/warehouses/{id}/stock/add",
+        "POST /admin/warehouses/{id}/stock/add",
+        "GET /admin/warehouses/{id}/stock/return",
+        "POST /admin/warehouses/{id}/stock/return"
+      ]
+    },
+    {
+      "name": "Reports - Pharmacies",
+      "description": "Generate reports for pharmacies by province, center, and pharmacist with sales statistics.",
+      "endpoints": [
+        "GET /admin/reports",
+        "GET /admin/reports/province/{id}",
+        "GET /admin/reports/center/{id}",
+        "GET /admin/reports/pharmacist/{id}"
+      ]
+    },
+    {
+      "name": "Reports - Representatives",
+      "description": "Generate reports for sales and medical representatives showing performance and sales statistics.",
+      "endpoints": [
+        "GET /admin/reports/representatives",
+        "GET /admin/reports/representatives/{id}"
+      ]
+    },
+    {
+      "name": "Reports - Doctors",
+      "description": "Generate reports for doctors with sales, commissions, and balance. Includes payment functionality.",
+      "endpoints": [
+        "GET /admin/reports/doctors",
+        "GET /admin/reports/doctors/province/{id}",
+        "GET /admin/reports/doctors/center/{id}",
+        "GET /admin/reports/doctors/doctor/{id}",
+        "POST /admin/reports/doctors/doctor/{id}/pay",
+        "GET /admin/reports/doctors-balance"
+      ]
+    },
+    {
+      "name": "Reports - Zone Risk",
+      "description": "Generate zone risk reports showing zones with high risk ratios (discount + expense ratio) with export functionality.",
+      "endpoints": [
+        "GET /admin/reports/zone-risk",
+        "GET /admin/reports/zone-risk/export",
+        "GET /admin/reports/zone-risk/{id}"
+      ]
+    },
+    {
+      "name": "Profile Management",
+      "description": "User profile management for editing profile and updating password.",
+      "endpoints": [
+        "GET /profile",
+        "PATCH /profile",
+        "DELETE /profile"
+      ]
+    }
+  ],
+  "authentication": {
+    "type": "session-based",
+    "roles": ["admin", "accountant"],
+    "login_required": true
+  },
+  "database": {
+    "type": "SQLite/MySQL",
+    "models": [
+      "User",
+      "Drug",
+      "Invoice",
+      "InvoiceDetail",
+      "Province",
+      "Center",
+      "Pharmacist",
+      "Doctor",
+      "Representative",
+      "Zone",
+      "ZoneExpense",
+      "DoctorDeal",
+      "Warehouse"
+    ]
+  }
+}
