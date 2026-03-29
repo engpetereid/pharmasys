@@ -105,53 +105,11 @@ class InvoiceController extends Controller
 
     public function create()
     {
-        $provinces = Province::select('id', 'name')->get();
-
-        $pharmacists = Pharmacist::with([
-            'center',
-            'deals' => function($query) {
-                $query->where('is_archived', false);
-                $query->where('is_active', true);
-            },
-            'deals.doctor',
-            'deals.drugs' // جلب الأدوية لتمريرها للواجهة (ستستخدم في الفلترة)
-        ])
-            ->get()
-            ->map(function ($ph) {
-                return [
-                    'id' => $ph->id,
-                    'name' => $ph->name,
-                    'center_id' => $ph->center_id,
-                    'center' => $ph->center ? ['id' => $ph->center->id, 'name' => $ph->center->name, 'province_id' => $ph->center->province_id] : null,
-                    'deals' => $ph->deals->map(function ($deal) {
-
-                        if ($deal->is_archived) return null;
-                        if (!$deal->doctor) return null;
-
-                        $isComplete = ($deal->achieved_amount >= $deal->target_amount)&&($deal->target_amount!=0);
-                        $doctorName = $deal->doctor->name . ($isComplete ? ' (مكتمل) ' : '');
-
-                        return [
-                            'id' => $deal->id,
-                            // تمرير أدوية الاتفاق المسموحة (للتعامل معها بـ JS)
-                            'drugs' => $deal->drugs->pluck('id')->toArray(),
-                            'is_general' => $deal->drugs->isEmpty(),
-                            'doctor' => [
-                                'id' => $deal->doctor->id,
-                                'name' => $doctorName,
-                                'speciality' => $deal->doctor->speciality,
-                                'commission_rate' => $deal->commission_percentage
-                            ]
-                        ];
-                    })->filter(function ($d) {
-                        return $d != null;
-                    })->values()
-                ];
-            });
-
-        $doctors = [];
-        $drugs = Drug::select('id', 'name', 'price', 'line')->get();
-        $today = Carbon::now()->format('Y-m-d');
+        $provinces   = Province::select('id', 'name')->get();
+        $pharmacists = $this->getPharmacistsForForm();
+        $doctors     = [];
+        $drugs       = Drug::select('id', 'name', 'price', 'line')->get();
+        $today       = Carbon::now()->format('Y-m-d');
 
         return view('admin.invoices.create', compact('provinces', 'pharmacists', 'doctors', 'drugs', 'today'));
     }
@@ -204,65 +162,20 @@ class InvoiceController extends Controller
     public function edit(Invoice $invoice)
     {
         $invoice->load('doctors');
-        $provinces = Province::select('id', 'name')->get();
+        $provinces   = Province::select('id', 'name')->get();
+        $pharmacists = $this->getPharmacistsForForm();
+        $doctors     = [];
+        $drugs       = Drug::where('line', $invoice->line)->select('id', 'name', 'price', 'line')->get();
 
-        $pharmacists = Pharmacist::with([
-            'center',
-            'deals' => function ($query) {
-        $query->where('is_archived', false);
-        $query->where('is_active', true);
-    },
-            'deals.doctor',
-            'deals.drugs'
-        ])
-            ->get()
-        ->map(function ($ph) {
-            return [
-                'id' => $ph->id,
-                'name' => $ph->name,
-                'center_id' => $ph->center_id,
-                'center' => $ph->center ? [
-                    'id' => $ph->center->id,
-                    'name' => $ph->center->name,
-                    'province_id' => $ph->center->province_id
-                ] : null,
-                'deals' => $ph->deals->map(function ($deal) {
-                    if (!$deal->doctor) return null;
-                    if ($deal->is_archived) return null;
-
-                    $isComplete = $deal->achieved_amount >= $deal->target_amount;
-                    return [
-                        'id' => $deal->id,
-                        'drugs' => $deal->drugs->pluck('id')->toArray(),
-                        'is_general' => $deal->drugs->isEmpty(),
-                        'doctor' => [
-                            'id' => $deal->doctor->id,
-                            'name' => $deal->doctor->name . ($isComplete ? ' (مكتمل)' : ''),
-                            'speciality' => $deal->doctor->speciality,
-                            'commission_rate' => $deal->commission_percentage
-                        ]
-                    ];
-                })->filter(function ($d) {
-                    return $d != null;
-                })->values()
-            ];
-        });
-
-        $doctors = [];
-
-        $drugs = Drug::where('line', $invoice->line)->select('id', 'name', 'price', 'line')->get();
-
-        $invoiceDetails = $invoice->details->map(function ($detail) {
-            return [
-                'id' => $detail->id,
-                'drug_id' => $detail->drug_id,
-                'drug_name_display' => $detail->drug->name,
-                'unit_price' => $detail->unit_price,
-                'quantity' => $detail->quantity,
-                'discount' => $detail->pharmacist_discount_percentage,
-                'total' => $detail->row_total
-            ];
-        });
+        $invoiceDetails = $invoice->details->map(fn($detail) => [
+            'id'                => $detail->id,
+            'drug_id'           => $detail->drug_id,
+            'drug_name_display' => $detail->drug->name,
+            'unit_price'        => $detail->unit_price,
+            'quantity'          => $detail->quantity,
+            'discount'          => $detail->pharmacist_discount_percentage,
+            'total'             => $detail->row_total,
+        ]);
 
         return view('admin.invoices.edit', compact('invoice', 'invoiceDetails', 'provinces', 'pharmacists', 'doctors', 'drugs'));
     }
@@ -367,6 +280,51 @@ class InvoiceController extends Controller
         $pdf = Pdf::loadHTML($html);
         $pdf->setOption(['dpi' => 150, 'defaultFont' => 'DejaVu Sans', 'isRemoteEnabled' => true]);
         return $pdf->stream('invoice_' . $invoice->id . '.pdf');
+    }
+
+    /**
+     * Build the shared pharmacists data-structure used by create() and edit().
+     * Loads centers + active non-archived deals with their doctor and drugs
+     * in a single eager-loaded query, then maps to a plain array for the view.
+     */
+    private function getPharmacistsForForm(): \Illuminate\Support\Collection
+    {
+        return Pharmacist::with([
+            'center',
+            'deals' => fn($q) => $q->where('is_archived', false)->where('is_active', true),
+            'deals.doctor',
+            'deals.drugs',
+        ])->get()->map(fn($ph) => [
+            'id'        => $ph->id,
+            'name'      => $ph->name,
+            'center_id' => $ph->center_id,
+            'center'    => $ph->center ? [
+                'id'          => $ph->center->id,
+                'name'        => $ph->center->name,
+                'province_id' => $ph->center->province_id,
+            ] : null,
+            'deals'     => $ph->deals
+                ->map(function ($deal) {
+                    if ($deal->is_archived || !$deal->doctor) return null;
+
+                    $isComplete = $deal->target_amount > 0
+                        && $deal->achieved_amount >= $deal->target_amount;
+
+                    return [
+                        'id'         => $deal->id,
+                        'drugs'      => $deal->drugs->pluck('id')->toArray(),
+                        'is_general' => $deal->drugs->isEmpty(),
+                        'doctor'     => [
+                            'id'              => $deal->doctor->id,
+                            'name'            => $deal->doctor->name . ($isComplete ? ' (مكتمل)' : ''),
+                            'speciality'      => $deal->doctor->speciality,
+                            'commission_rate' => $deal->commission_percentage,
+                        ],
+                    ];
+                })
+                ->filter()
+                ->values(),
+        ]);
     }
 
     private function getFilteredQuery(Request $request)

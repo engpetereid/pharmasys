@@ -204,7 +204,9 @@ class DoctorDealController extends Controller
 
     public function destroy(DoctorDeal $deal)
     {
+        DB::beginTransaction();
         $deal->delete();
+        DB::commit();
         return redirect()->route('admin.deals.index')->with(['success' => 'تم حذف الاتفاق']);
     }
 

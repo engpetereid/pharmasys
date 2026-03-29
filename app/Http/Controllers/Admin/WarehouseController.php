@@ -145,16 +145,16 @@ class WarehouseController extends Controller
                     ]);
                 }
 
-                $exists = $warehouse->drugs()->where('drug_id', $drugId)->exists();
+                // استعلام واحد بدلاً من exists() + find()
+                $existingStock = $warehouse->drugs()->where('drug_id', $drugId)->first();
 
-                if ($exists) {
-                    $currentQty = $warehouse->drugs()->find($drugId)->pivot->quantity;
+                if ($existingStock) {
                     $warehouse->drugs()->updateExistingPivot($drugId, [
-                        'quantity' => $currentQty + $quantityToAdd
+                        'quantity' => $existingStock->pivot->quantity + $quantityToAdd,
                     ]);
                 } else {
                     $warehouse->drugs()->attach($drugId, [
-                        'quantity' => $quantityToAdd
+                        'quantity' => $quantityToAdd,
                     ]);
                 }
             }

@@ -82,9 +82,14 @@ class ReportController extends Controller
             ->latest()
             ->paginate(20);
 
-        $totalSales = $pharmacist->invoices()->sum('final_total');
-        $totalPaid = $pharmacist->invoices()->sum('paid_amount');
-        $totalDue = $pharmacist->invoices()->sum('remaining_amount');
+        // جلب الثلاثة مجاميع في استعلام واحد بدلاً من ثلاثة استعلامات منفصلة
+        $aggregates = $pharmacist->invoices()
+            ->selectRaw('SUM(final_total) as total_sales, SUM(paid_amount) as total_paid, SUM(remaining_amount) as total_due')
+            ->first();
+
+        $totalSales = $aggregates->total_sales ?? 0;
+        $totalPaid  = $aggregates->total_paid  ?? 0;
+        $totalDue   = $aggregates->total_due   ?? 0;
 
         return view('admin.reports.pharmacist', compact('pharmacist', 'invoices', 'totalSales', 'totalPaid', 'totalDue'));
     }

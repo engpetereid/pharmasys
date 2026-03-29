@@ -8,7 +8,7 @@ use App\Models\Pharmacist;
 use App\Models\Doctor;
 use App\Models\Representative;
 use App\Models\Zone;
-use App\Models\ZoneExpense; // إضافة موديل المصروفات
+use App\Models\ZoneExpense;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,55 +36,57 @@ class DashboardController extends Controller
         // إجمالي المستحقات (تراكمي )
         $totalDue = Invoice::sum('remaining_amount');
 
-        // 3. المناطق الخطره (تطبيق المنطق الجديد: خصومات + مصروفات)
-        $zones = Zone::with('centers')->get();
+        // 3. المناطق الخطرة – حساب واحد في DB بدلاً من query لكل منطقة
+        // جلب إجمالي سعر الجمهور + الخصم لكل منطقة في استعلام واحد
+        $invoiceTotals = DB::table('zones')
+            ->join('center_zone', 'center_zone.zone_id', '=', 'zones.id')
+            ->join('pharmacists', 'pharmacists.center_id', '=', 'center_zone.center_id')
+            ->join('invoices', function ($join) use ($startOfSelectedMonth, $endOfSelectedMonth) {
+                $join->on('invoices.pharmacist_id', '=', 'pharmacists.id')
+                     ->on('invoices.line', '=', 'zones.line')
+                     ->whereBetween('invoices.invoice_date', [$startOfSelectedMonth, $endOfSelectedMonth]);
+            })
+            ->join('invoice_details', 'invoice_details.invoice_id', '=', 'invoices.id')
+            ->groupBy('zones.id')
+            ->select(
+                'zones.id as zone_id',
+                DB::raw('SUM(invoice_details.unit_price * invoice_details.quantity) as public_price_total'),
+                DB::raw('SUM(invoices.total_discount) as total_discount')
+            )
+            ->get()
+            ->keyBy('zone_id');
 
-        $riskyZones = $zones->map(function ($zone) use ($startOfSelectedMonth, $endOfSelectedMonth) {
-            $centerIds = $zone->centers->pluck('id')->toArray();
+        // جلب مصروفات المناطق في استعلام واحد
+        $expenseTotals = DB::table('zone_expenses')
+            ->whereBetween('expense_date', [$startOfSelectedMonth, $endOfSelectedMonth])
+            ->groupBy('zone_id')
+            ->select('zone_id', DB::raw('SUM(amount) as total_expenses'))
+            ->get()
+            ->keyBy('zone_id');
 
-            // الفواتير في الشهر المختار (مع التفاصيل لحساب سعر الجمهور)
-            $invoices = Invoice::with('details')
-                ->whereBetween('invoice_date', [$startOfSelectedMonth, $endOfSelectedMonth])
-                ->where('line', $zone->line)
-                ->whereHas('pharmacist', function ($q) use ($centerIds) {
-                    $q->whereIn('center_id', $centerIds);
-                })->get();
+        $zones = Zone::select('id', 'name', 'line')->get();
 
-            // أ) حساب إجمالي السعر الجمهوري
-            $publicPriceTotal = $invoices->reduce(function ($carry, $invoice) {
-                return $carry + $invoice->details->reduce(function ($subCarry, $detail) {
-                        return $subCarry + ($detail->unit_price * $detail->quantity);
-                    }, 0);
-            }, 0);
+        $riskyZones = $zones->map(function ($zone) use ($invoiceTotals, $expenseTotals) {
+            $totals          = $invoiceTotals->get($zone->id);
+            $publicPriceTotal= $totals ? (float) $totals->public_price_total : 0;
+            $totalDiscount   = $totals ? (float) $totals->total_discount     : 0;
+            $totalExpenses   = $expenseTotals->has($zone->id)
+                ? (float) $expenseTotals->get($zone->id)->total_expenses
+                : 0;
 
-            // ب) حساب قيمة خصم الصيدليات
-            $totalDiscountValue = $invoices->sum('total_discount');
-
-            // ج) حساب مصروفات المنطقة
-            $totalZoneExpenses = $zone->expenses()
-                ->whereBetween('expense_date', [$startOfSelectedMonth, $endOfSelectedMonth])
-                ->sum('amount');
-
-            // د) حساب النسبة الجديدة
             $riskRatio = 0;
             if ($publicPriceTotal > 0) {
-                // المعادلة: (نسبة الخصم) + (نسبة المصروفات)
-                $avgDiscountPercentage = ($totalDiscountValue / $publicPriceTotal) * 100;
-                $expenseRatio = ($totalZoneExpenses / $publicPriceTotal) * 100;
-                $riskRatio = $avgDiscountPercentage + $expenseRatio;
+                $riskRatio = (($totalDiscount + $totalExpenses) / $publicPriceTotal) * 100;
             }
 
             return [
-                'id' => $zone->id,
-                'name' => $zone->name,
-                'line' => $zone->line,
-                'ratio' => round($riskRatio, 1),
-                // القيمة هنا تعبر عن (إجمالي الخصم + المصروفات) كقيمة مالية
-                'risk_amount' => $totalDiscountValue + $totalZoneExpenses
+                'id'          => $zone->id,
+                'name'        => $zone->name,
+                'line'        => $zone->line,
+                'ratio'       => round($riskRatio, 1),
+                'risk_amount' => $totalDiscount + $totalExpenses,
             ];
-        })->filter(function ($item) {
-            return $item['ratio'] > 40; // فلتر المناطق التي تتجاوز 40%
-        })->values();
+        })->filter(fn($item) => $item['ratio'] > 40)->values();
 
         //  بناءً على الشهر المختار
         $topPharmacists = Pharmacist::with('center')
