@@ -164,11 +164,14 @@
                                                     <td>{{ $expense->description }}</td>
                                                     <td class="font-weight-bold text-danger">{{ number_format($expense->amount, 2) }}</td>
                                                     <td><small class="text-muted">{{ $expense->created_at->diffForHumans() }}</small></td>
-                                                    <td>
-                                                        <form action="{{ route('admin.zones.expenses.destroy', $expense->id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذا المصروف؟')">
+                                                    <td class="text-center">
+                                                        <a href="{{ route('admin.zones.expenses.edit', $expense->id) }}" class="btn btn-sm btn-info" title="تعديل">
+                                                            <i class="la la-edit"></i>
+                                                        </a>
+                                                        <form action="{{ route('admin.zones.expenses.destroy', $expense->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا المصروف؟')">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-danger"><i class="ft-trash"></i></button>
+                                                            <button type="submit" class="btn btn-sm btn-danger" title="حذف"><i class="ft-trash"></i></button>
                                                         </form>
                                                     </td>
                                                 </tr>

@@ -50,6 +50,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('zones/{id}/expenses/create', [ZoneExpenseController::class, 'create'])->name('zones.expenses.create');
     Route::post('zones/{id}/expenses', [ZoneExpenseController::class, 'store'])->name('zones.expenses.store');
+    Route::get('expenses/{id}/edit', [ZoneExpenseController::class, 'edit'])->name('zones.expenses.edit');
+    Route::put('expenses/{id}', [ZoneExpenseController::class, 'update'])->name('zones.expenses.update');
     Route::delete('expenses/{id}', [ZoneExpenseController::class, 'destroy'])->name('zones.expenses.destroy');
 
     Route::resource('deals', DoctorDealController::class);

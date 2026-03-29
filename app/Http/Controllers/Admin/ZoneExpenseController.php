@@ -37,6 +37,32 @@ class ZoneExpenseController extends Controller
             ->with(['success' => 'تم إضافة المصروف بنجاح']);
     }
 
+    public function edit($id)
+    {
+        $expense = ZoneExpense::findOrFail($id);
+        $zone = $expense->zone;
+        return view('admin.zones.expenses.edit', compact('expense', 'zone'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'amount'       => 'required|numeric|min:1',
+            'description'  => 'required|string|max:255',
+            'expense_date' => 'required|date',
+        ]);
+
+        $expense = ZoneExpense::findOrFail($id);
+        $expense->update([
+            'amount'       => $request->amount,
+            'description'  => $request->description,
+            'expense_date' => $request->expense_date,
+        ]);
+
+        return redirect()->route('admin.zones.show', $expense->zone_id)
+            ->with(['success' => 'تم تعديل المصروف بنجاح']);
+    }
+
     public function destroy($id)
     {
         $expense = ZoneExpense::findOrFail($id);
