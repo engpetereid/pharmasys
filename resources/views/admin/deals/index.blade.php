@@ -41,6 +41,9 @@
         .btn-soft-dark { background-color: rgba(52, 58, 64, 0.1); color: #343a40; }
         .btn-soft-dark:hover { background-color: #343a40; color: #fff; }
 
+        .stat-card { border-radius: 5px; overflow: hidden; transition: all 0.3s; background: #fff; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+
         @media print {
             @page { margin: 0.5cm; size: auto; }
             body { background-color: #fff; -webkit-print-color-adjust: exact; width: 100% !important; }
@@ -63,7 +66,6 @@
             }
 
             .col-xl-4, .col-md-6 {
-
                 max-width: 41% !important;
                 margin-left: 75px !important;
             }
@@ -76,6 +78,29 @@
             }
             .deal-card.is-stopped { background-color: #eee !important; }
 
+            /* تنسيقات الإحصائيات للطباعة */
+            .card_con {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                gap: 20px;
+                justify-content: center !important;
+                margin-bottom: 20px;
+            }
+            .card_con .col-xl-3, .card_con .col-md-6 {
+                flex: 0 0 22% !important;
+                max-width: 22% !important;
+                padding: 0 !important;
+                margin-left: 0 !important; /* إعادة ضبط للملخص */
+            }
+            .stat-card {
+                border: 3px solid #ccc !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                page-break-inside: avoid;
+            }
+            .stat-card .card-body { padding: 10px !important; }
+            .stat-card h6 { font-size: 10pt !important; color: #000 !important; font-weight: bold; }
+            .stat-card h3 { font-size: 14pt !important; color: #000 !important; }
 
             .print-header-wrapper {
                 display: flex !important;
@@ -108,7 +133,7 @@
     <div class="app-content content">
         <div class="content-wrapper">
 
-           <div class="print-header-wrapper">
+            <div class="print-header-wrapper">
                 <div class="print-header">
                     <h2>{{ request()->routeIs('admin.deals.archived') ? 'أرشيف الاتفاقات' : 'تقرير اتفاقات وتارجت الأطباء' }}</h2>
                     <p>تاريخ الطباعة: {{ date('Y-m-d H:i') }} | عدد الاتفاقات: {{ $deals->total() }}</p>
@@ -148,6 +173,43 @@
                 @include('admin.includes.alerts.success')
                 @include('admin.includes.alerts.errors')
 
+                {{-- إحصائيات ملخص الاتفاقات المتجاوبة مع الفلتر --}}
+                <div class="row card_con mb-2">
+                    <div class="col-xl-3 col-md-6 col-12">
+                        <div class="card stat-card border-top-info border-top-3 box-shadow-1 mb-0">
+                            <div class="card-body p-2">
+                                <h6 class="text-muted mb-1">إجمالي التارجت المطلوب</h6>
+                                <h3 class="text-info font-weight-bold mb-0">{{ number_format($stats['total_target']) }} ج.م</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 col-12">
+                        <div class="card stat-card border-top-primary border-top-3 box-shadow-1 mb-0">
+                            <div class="card-body p-2">
+                                <h6 class="text-muted mb-1">إجمالي المبيعات المحققة</h6>
+                                <h3 class="text-primary font-weight-bold mb-0">{{ number_format($stats['total_achieved']) }} ج.م</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 col-12">
+                        <div class="card stat-card border-top-success border-top-3 box-shadow-1 mb-0">
+                            <div class="card-body p-2">
+                                <h6 class="text-muted mb-1">إجمالي المدفوع للأطباء</h6>
+                                <h3 class="text-success font-weight-bold mb-0">{{ number_format($stats['total_paid']) }} ج.م</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 col-12">
+                        <div class="card stat-card border-top-danger border-top-3 box-shadow-1 mb-0">
+                            <div class="card-body p-2">
+                                <h6 class="text-muted mb-1">إجمالي العمولات المتبقية</h6>
+                                <h3 class="text-danger font-weight-bold mb-0">{{ number_format($stats['total_remaining']) }} ج.م</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- الفلتر --}}
                 <div class="card no-print">
                     <div class="card-body">
                         <form action="{{ request()->url() }}" method="GET">
@@ -286,9 +348,9 @@
 
                                                     <div class="mb-0 progress box-shadow-1">
                                                         <div class="progress-bar bg-gradient-x-{{ $progressColor }}"
-                                                            role="progressbar"
-                                                            style="width: {{ $percentDisplay }}%"
-                                                            aria-valuenow="{{ $percentDisplay }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                             role="progressbar"
+                                                             style="width: {{ $percentDisplay }}%"
+                                                             aria-valuenow="{{ $percentDisplay }}" aria-valuemin="0" aria-valuemax="100"></div>
                                                     </div>
                                                     <p class="mt-1 mb-0 text-center font-small-2 text-muted">
                                                         {{ number_format($percent, 1) }}% مكتمل
@@ -339,7 +401,7 @@
                                                     </a>
                                                 </div>
 
-                                               <div class="mb-1 col-12">
+                                                <div class="mb-1 col-12">
                                                     @if($deal->status != 1)
                                                         @php
                                                             $canSettle = !$isOpenDeal && ($deal->achieved_amount >= $deal->target_amount);
@@ -385,13 +447,13 @@
                                                     <div class="actions-footer">
                                                         <div class="d-flex">
                                                             @if(!$deal->is_archived)
-                                                            <form action="{{ route('admin.deals.toggleActive', $deal->id) }}" method="POST" class="mr-1">
-                                                                @csrf
-                                                                <button type="submit" class="btn-icon-soft {{ $deal->is_active ? 'btn-soft-warning' : 'btn-soft-success' }}"
-                                                                        data-toggle="tooltip" title="{{ $deal->is_active ? 'إيقاف مؤقت' : 'تنشيط العمل' }}">
-                                                                    <i class="ft-{{ $deal->is_active ? 'pause' : 'play' }}"></i>
-                                                                </button>
-                                                            </form>
+                                                                <form action="{{ route('admin.deals.toggleActive', $deal->id) }}" method="POST" class="mr-1">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn-icon-soft {{ $deal->is_active ? 'btn-soft-warning' : 'btn-soft-success' }}"
+                                                                            data-toggle="tooltip" title="{{ $deal->is_active ? 'إيقاف مؤقت' : 'تنشيط العمل' }}">
+                                                                        <i class="ft-{{ $deal->is_active ? 'pause' : 'play' }}"></i>
+                                                                    </button>
+                                                                </form>
                                                             @endif
                                                             <form action="{{ route('admin.deals.toggleArchive', $deal->id) }}" method="POST">
                                                                 @csrf

@@ -43,30 +43,56 @@ class DoctorDealController extends Controller
         return $query;
     }
 
+    /**
+     * دالة مساعدة لحساب الإحصائيات بناءً على الفلتر الحالي
+     */
+    private function calculateDealStats($query)
+    {
+        $stats = (clone $query)->selectRaw('
+            SUM(target_amount) as total_target,
+            SUM(achieved_amount) as total_achieved,
+            SUM(paid_amount) as total_paid,
+            SUM(CASE WHEN target_amount > 0 THEN commission_amount ELSE (achieved_amount * commission_percentage / 100) END) as total_commission
+        ')->first();
+
+        $total_target = $stats->total_target ?? 0;
+        $total_achieved = $stats->total_achieved ?? 0;
+        $total_paid = $stats->total_paid ?? 0;
+        $total_commission = $stats->total_commission ?? 0;
+
+        $total_remaining = max(0, $total_commission - $total_paid);
+
+        return compact('total_target', 'total_achieved', 'total_commission', 'total_paid', 'total_remaining');
+    }
+
     public function index(Request $request)
     {
         $query = $this->getFilteredDealsQuery($request);
-
         $query->where('is_archived', false);
+
+        // جلب الإحصائيات بعد تطبيق الفلاتر وقبل التقسيم (Pagination)
+        $stats = $this->calculateDealStats($query);
 
         $zones = Zone::where('line', 1)->get();
         $deals = $query->latest()->paginate(12);
         $deals->appends($request->all());
 
-        return view('admin.deals.index', compact('deals', 'zones'));
+        return view('admin.deals.index', compact('deals', 'zones', 'stats'));
     }
 
     public function archived(Request $request)
     {
         $query = $this->getFilteredDealsQuery($request);
-
         $query->where('is_archived', true);
+
+        // جلب الإحصائيات لصفحة الأرشيف بنفس طريقة الفلترة
+        $stats = $this->calculateDealStats($query);
 
         $zones = Zone::where('line', 1)->get();
         $deals = $query->latest()->paginate(12);
         $deals->appends($request->all());
 
-        return view('admin.deals.index', compact('deals', 'zones'));
+        return view('admin.deals.index', compact('deals', 'zones', 'stats'));
     }
 
     public function create()
@@ -142,7 +168,7 @@ class DoctorDealController extends Controller
 
         $pharmacists = Pharmacist::select('id', 'name', 'center_id')->with('center')->get();
         $drugs = Drug::select('id', 'name', 'line')->get();
-        $deal->load(['pharmacists', 'drugs', 'doctor']); // تحميل الطبيب أيضاً
+        $deal->load(['pharmacists', 'drugs', 'doctor']);
 
         return view('admin.deals.edit', compact('deal', 'doctors', 'pharmacists', 'drugs'));
     }
@@ -230,7 +256,6 @@ class DoctorDealController extends Controller
 
     public function showInvoices(DoctorDeal $deal)
     {
-        // 1. الفواتير المحصلة (المدفوعة) التي تم احتسابها بالفعل ضمن التارجت
         $paidInvoices = $deal->invoices()
             ->with(['representative', 'medicalRepresentative', 'pharmacist', 'details'])
             ->latest()
@@ -239,7 +264,6 @@ class DoctorDealController extends Controller
         $dealDrugIds = $deal->drugs->pluck('id')->toArray();
         $isGeneralDeal = empty($dealDrugIds);
 
-        // 2. الفواتير الآجلة أو المدفوعة جزئياً المرتبطة بهذا الطبيب وهذه الصيدليات
         $pharmacistIds = $deal->pharmacists->pluck('id')->toArray();
 
         $unpaidQuery = \App\Models\Invoice::with(['representative', 'pharmacist', 'details'])
@@ -247,7 +271,7 @@ class DoctorDealController extends Controller
                 $q->where('doctors.id', $deal->doctor_id);
             })
             ->whereIn('pharmacist_id', $pharmacistIds)
-            ->whereIn('status', [2, 3]) // 2: آجل, 3: جزئي
+            ->whereIn('status', [2, 3])
             ->whereDate('invoice_date', '>=', $deal->start_date)
             ->latest()
             ->get();
@@ -255,7 +279,6 @@ class DoctorDealController extends Controller
         $unpaidTotalContribution = 0;
         $unpaidInvoicesList = collect();
 
-        // حساب القيمة المتوقعة من هذه الفواتير بناءً على أدوية الاتفاق فقط
         foreach ($unpaidQuery as $inv) {
             $invContribution = 0;
             foreach ($inv->details as $detail) {
@@ -264,7 +287,6 @@ class DoctorDealController extends Controller
                 }
             }
 
-            // إذا كانت الفاتورة تحتوي على أدوية ضمن الاتفاق
             if ($invContribution > 0) {
                 $inv->potential_contribution = $invContribution;
                 $unpaidTotalContribution += $invContribution;
@@ -272,7 +294,6 @@ class DoctorDealController extends Controller
             }
         }
 
-        // حساب عمولة الطبيب المتوقعة من هذه الفواتير عند تحصيلها
         $potentialCommission = $unpaidTotalContribution * ($deal->commission_percentage / 100);
 
         return view('admin.deals.invoices', compact(
@@ -312,9 +333,6 @@ class DoctorDealController extends Controller
         return redirect()->back()->with(['success' => "تم $statusMsg بنجاح"]);
     }
 
-    /**
-     * دالة مساعدة لتسجيل الدفعات كمصروف في المنطقة التابع لها الطبيب تلقائياً
-     */
     private function recordDealExpense(DoctorDeal $deal, $amount)
     {
         if ($amount <= 0) return;
@@ -322,26 +340,22 @@ class DoctorDealController extends Controller
         $doctor = Doctor::find($deal->doctor_id);
         if (!$doctor || !$doctor->center_id) return;
 
-        // تحديد خط السير بناءً على أدوية الاتفاق (أو الخط الأول افتراضياً)
         $line = 1;
         $firstDrug = $deal->drugs()->first();
         if ($firstDrug) {
             $line = $firstDrug->line;
         }
 
-        // إيجاد المنطقة التابعة لمركز الطبيب والتي توافق خط السير
         $zone = Zone::where('line', $line)->whereHas('centers', function($q) use ($doctor) {
             $q->where('centers.id', $doctor->center_id);
         })->first();
 
-        // في حال لم نجد منطقة مطابقة للخط، نجلب أي منطقة مربوطة بمركز الطبيب
         if (!$zone) {
             $zone = Zone::whereHas('centers', function($q) use ($doctor) {
                 $q->where('centers.id', $doctor->center_id);
             })->first();
         }
 
-        // إذا تم العثور على منطقة نقوم بتسجيل المصروف
         if ($zone) {
             ZoneExpense::create([
                 'zone_id' => $zone->id,
