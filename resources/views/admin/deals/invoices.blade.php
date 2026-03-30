@@ -154,7 +154,7 @@
                                         <th>الصيدلية</th>
                                         <th>حالة الفاتورة</th>
                                         <th>صافى الفاتورة</th>
-                                        <th class="bg-warning bg-lighten-4">المبيعات المتوقعة للاتفاق</th>
+                                        <th class="bg-warning bg-lighten-4">جمهورى الفاتورة</th>
                                         <th>الإجراءات</th>
                                     </tr>
                                     </thead>
