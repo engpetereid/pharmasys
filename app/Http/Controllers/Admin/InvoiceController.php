@@ -481,13 +481,12 @@ class InvoiceController extends Controller
         // تطبيق التارجت كاملاً لكل دكتور حسب أدويته
         foreach ($deals as $deal) {
             $includedDrugIds = $deal->drugs->pluck('id')->toArray();
-            $isGeneralDeal = $deal->drugs->isEmpty();
             $dealContribution = 0;
 
             foreach ($invoice->details as $detail) {
-                // إذا كان الاتفاق عام، أو الدواء موجود ضمن الاتفاق
-                if ($isGeneralDeal || in_array($detail->drug_id, $includedDrugIds)) {
-                    $dealContribution += $detail->row_total;
+                // الدواء موجود ضمن الاتفاق
+                if ( in_array($detail->drug_id, $includedDrugIds)) {
+                    $dealContribution += $detail->unit_price * $detail->quantity;
                 }
             }
 
