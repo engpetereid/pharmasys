@@ -381,6 +381,7 @@
                                                                 <a class="dropdown-item" href="{{ route('admin.invoices.show', $invoice->id) }}">
                                                                     <i class="mr-1 ft-eye text-info"></i> تفاصيل الفاتورة
                                                                 </a>
+                                                                <div class="dropdown-divider"></div>
                                                                 <a class="dropdown-item" href="{{ route('admin.invoices.pdf', $invoice->id) }}" target="_blank">
                                                                     <i class="mr-1 la la-file-pdf-o text-secondary"></i> طباعة PDF
                                                                 </a>
@@ -388,6 +389,11 @@
                                                                 <a class="dropdown-item" href="{{ route('admin.invoices.edit', $invoice->id) }}">
                                                                     <i class="mr-1 ft-edit text-warning"></i> تعديل
                                                                 </a>
+                                                                <div class="dropdown-divider"></div>
+                                                                <a class="dropdown-item font-weight-bold" href="{{ route('admin.invoices.payments', $invoice->id) }}">
+                                                                    <i class="mr-1 fas fa-dollar-sign"></i> سداد مبلغ
+                                                                </a>
+                                                                <div class="dropdown-divider"></div>
                                                                 <form action="{{ route('admin.invoices.destroy', $invoice->id) }}" method="POST" onsubmit="return confirm('حذف الفاتورة سيؤدي لإرجاع الكميات للمخزن وعكس تارجت الدكتور. هل أنت متأكد؟');" style="display:inline;">
                                                                     @csrf @method('DELETE')
                                                                     <button type="submit" class="dropdown-item text-danger">

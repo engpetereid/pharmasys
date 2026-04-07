@@ -69,13 +69,12 @@
                 max-width: 41% !important;
                 margin-left: 75px !important;
             }
-
-            .card {
-                border: 1px solid #999 !important;
-                break-inside: avoid;
-                margin-bottom: 0 !important;
-                box-shadow: none !important;
-            }
+             .card {
+            border: 1px solid #999 !important;
+            break-inside: avoid;
+            margin-bottom: 0 !important;
+            box-shadow: none !important;
+        }
             .deal-card.is-stopped { background-color: #eee !important; }
 
             /* تنسيقات الإحصائيات للطباعة */
@@ -168,8 +167,7 @@
                     @endif
                 </div>
             </div>
-
-            <div class="content-body">
+             <div class="content-body">
                 @include('admin.includes.alerts.success')
                 @include('admin.includes.alerts.errors')
 
@@ -228,7 +226,7 @@
                                             <option value="">-- كل المناطق --</option>
                                             @foreach( $zones as $zone)
                                                 <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
-                                                    {{ $zone->name }}
+                                                     {{ $zone->name }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -246,13 +244,16 @@
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <button class="btn btn-info btn-block" type="submit"> <i class="ft-filter"></i> تصفية </button>
-                                        </div>
-                                        <div class="col-6">
-                                            <button class="btn btn-secondary btn-block" type="button" onclick="window.print()"> <i class="ft-printer"></i> طباعة </button>
-                                        </div>
+                                    <div class="btn-group w-100">
+                                        <button type="submit" class="btn btn-info">
+                                            <i class="ft-filter"></i> تصفية
+                                        </button>
+                                        <button type="submit" name="export" value="excel" class="btn btn-success">
+                                            <i class="la la-file-excel-o"></i> إكسيل
+                                        </button>
+                                        <button type="button" onclick="window.print()" class="btn btn-secondary">
+                                            <i class="ft-printer"></i> طباعة
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -292,9 +293,7 @@
                                 $currentCommission = $isOpenDeal
                                     ? ($deal->achieved_amount * ($deal->commission_percentage / 100))
                                     : $deal->commission_amount;
-
                                 $remaining = $deal->commission_amount - $deal->paid_amount;
-
                                 $percent = 0;
                                 if (!$isOpenDeal && $deal->target_amount > 0) {
                                     $percent = ($deal->achieved_amount / $deal->target_amount) * 100;
@@ -343,7 +342,7 @@
                                                 <div class="d-flex flex-column justify-content-center" style="min-height: 85px;">
                                                     <div class="mb-1 d-flex justify-content-between font-small-3">
                                                         <span class="text-muted">المحقق: <strong class="text-dark">{{ number_format($deal->achieved_amount) }}</strong></span>
-                                                        <span class="text-muted">الهدف: <strong>{{ number_format($deal->target_amount) }}</strong></span>
+                                                         <span class="text-muted">الهدف: <strong>{{ number_format($deal->target_amount) }}</strong></span>
                                                     </div>
 
                                                     <div class="mb-0 progress box-shadow-1">
@@ -391,7 +390,6 @@
                                                         <span class="text-bold-700 text-danger font-small-3">{{ number_format($remaining) }}</span>
                                                     </div>
                                                 @endif
-
                                             </div>
 
                                             <div class="pt-2 mt-auto row no-print" style="position: relative; z-index: 1;">
@@ -446,7 +444,7 @@
                                                 <div class="mt-1 col-12">
                                                     <div class="actions-footer">
                                                         <div class="d-flex">
-                                                            @if(!$deal->is_archived)
+                                                             @if(!$deal->is_archived)
                                                                 <form action="{{ route('admin.deals.toggleActive', $deal->id) }}" method="POST" class="mr-1">
                                                                     @csrf
                                                                     <button type="submit" class="btn-icon-soft {{ $deal->is_active ? 'btn-soft-warning' : 'btn-soft-success' }}"

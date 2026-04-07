@@ -44,15 +44,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('zones', ZoneController::class);
     Route::get('invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
     Route::resource('invoices', InvoiceController::class);
+    Route::get('invoices/{invoice}/payments', [\App\Http\Controllers\Admin\InvoiceController::class, 'payments'])->name('invoices.payments');
+    Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\Admin\InvoiceController::class, 'storePayment'])->name('invoices.payments.store');
+    Route::put('invoices/{invoice}/payments/{payment}', [\App\Http\Controllers\Admin\InvoiceController::class, 'updatePayment'])->name('invoices.payments.update');
+    Route::delete('invoices/{invoice}/payments/{payment}', [\App\Http\Controllers\Admin\InvoiceController::class, 'destroyPayment'])->name('invoices.payments.destroy');
     Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'printPdf'])->name('invoices.pdf');
     Route::get('/dashboard/line/{id}', [DashboardController::class, 'lineDashboard'])->name('dashboard.line');
-
 
     Route::get('zones/{id}/expenses/create', [ZoneExpenseController::class, 'create'])->name('zones.expenses.create');
     Route::post('zones/{id}/expenses', [ZoneExpenseController::class, 'store'])->name('zones.expenses.store');
     Route::get('expenses/{id}/edit', [ZoneExpenseController::class, 'edit'])->name('zones.expenses.edit');
     Route::put('expenses/{id}', [ZoneExpenseController::class, 'update'])->name('zones.expenses.update');
     Route::delete('expenses/{id}', [ZoneExpenseController::class, 'destroy'])->name('zones.expenses.destroy');
+    Route::get('/monthly-financials', [\App\Http\Controllers\Admin\ReportController::class, 'monthlyFinancials'])->name('monthly_financials');
 
     Route::resource('deals', DoctorDealController::class);
     Route::post('deals/{deal}/pay', [DoctorDealController::class, 'markAsPaid'])->name('deals.pay');
@@ -77,6 +81,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/province/{id}', [ReportController::class, 'showProvince'])->name('province');
         Route::get('/center/{id}', [ReportController::class, 'showCenter'])->name('center');
         Route::get('/pharmacist/{id}', [ReportController::class, 'showPharmacist'])->name('pharmacist');
+        Route::get('/monthly-financials', [\App\Http\Controllers\Admin\ReportController::class, 'monthlyFinancials'])->name('monthly_financials');
 
 
         Route::prefix('representatives')->name('representatives.')->group(function () {

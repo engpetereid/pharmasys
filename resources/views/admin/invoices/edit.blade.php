@@ -342,7 +342,7 @@
 
                                             <div class="mt-3">
                                                 <label class="font-weight-bold">حالة الدفع</label>
-                                                <select name="status" class="mb-2 form-control" x-model="payment_status"
+                                                <select name="status" class="mb-2 form-control" x-model="payment_status" disabled
                                                         @change="updatePaymentStatus()">
                                                     <option value="2">آجل (Deferred)</option>
                                                     <option value="1">مدفوع بالكامل (Paid)</option>
@@ -353,7 +353,7 @@
                                                      x-cloak>
                                                     <label class="text-muted small">المبلغ المدفوع</label>
                                                     <div class="input-group">
-                                                        <input type="number" step="0.01" name="paid_amount"
+                                                        <input type="number" step="0.01" name="paid_amount" disabled
                                                                class="form-control font-weight-bold"
                                                                :class="{'text-success': payment_status == 1, 'bg-white': payment_status == 3}"
                                                                x-model="paid_amount" @input="validatePaidAmount()"

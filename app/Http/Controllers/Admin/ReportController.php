@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Zone;
 use Illuminate\Http\Request;
 use App\Models\Province;
 use App\Models\Center;
@@ -10,7 +11,10 @@ use App\Models\Pharmacist;
 use App\Models\Doctor;
 use App\Models\Representative;
 use App\Models\Invoice;
-use App\Models\DoctorDeal; // إضافة موديل الاتفاقات
+use App\Models\DoctorDeal;
+use App\Models\InvoicePayment; // أضف هذا
+use App\Models\ZoneExpense;    // أضف هذا
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
@@ -82,14 +86,9 @@ class ReportController extends Controller
             ->latest()
             ->paginate(20);
 
-        // جلب الثلاثة مجاميع في استعلام واحد بدلاً من ثلاثة استعلامات منفصلة
-        $aggregates = $pharmacist->invoices()
-            ->selectRaw('SUM(final_total) as total_sales, SUM(paid_amount) as total_paid, SUM(remaining_amount) as total_due')
-            ->first();
-
-        $totalSales = $aggregates->total_sales ?? 0;
-        $totalPaid  = $aggregates->total_paid  ?? 0;
-        $totalDue   = $aggregates->total_due   ?? 0;
+        $totalSales = $pharmacist->invoices()->sum('final_total');
+        $totalPaid = $pharmacist->invoices()->sum('paid_amount');
+        $totalDue = $pharmacist->invoices()->sum('remaining_amount');
 
         return view('admin.reports.pharmacist', compact('pharmacist', 'invoices', 'totalSales', 'totalPaid', 'totalDue'));
     }
@@ -243,5 +242,110 @@ class ReportController extends Controller
         $totalCollected = $representative->invoices()->sum('paid_amount');
 
         return view('admin.reports.representatives.show', compact('representative', 'invoices', 'totalSales', 'totalCollected'));
+    }
+    public function monthlyFinancials(Request $request)
+    {
+        // 1. تحديد الشهر والسنة والمنطقة
+        $selectedMonth = $request->input('month', Carbon::now()->month);
+        $selectedYear = $request->input('year', Carbon::now()->year);
+        $selectedZone = $request->input('zone');
+
+        $startDate = Carbon::createFromDate($selectedYear, $selectedMonth, 1)->startOfMonth();
+        $endDate = Carbon::createFromDate($selectedYear, $selectedMonth, 1)->endOfMonth();
+
+        // 2. حساب إجمالي الدخل (التحصيلات)
+        $paymentsQuery = InvoicePayment::with(['invoice.pharmacist'])
+            ->whereBetween('payment_date', [$startDate, $endDate]);
+
+        // تطبيق فلتر المنطقة على التحصيلات
+        if ($selectedZone) {
+            $paymentsQuery->whereHas('invoice.pharmacist.center.zones', function($q) use ($selectedZone) {
+                $q->where('zones.id', $selectedZone);
+            });
+        }
+
+        $payments = $paymentsQuery->orderBy('payment_date', 'desc')->get();
+        $totalIncome = $payments->sum('amount');
+
+        // 3. حساب إجمالي المصروفات
+        $expensesQuery = ZoneExpense::with('zone')
+            ->whereBetween('expense_date', [$startDate, $endDate]);
+
+        // تطبيق فلتر المنطقة على المصروفات
+        if ($selectedZone) {
+            $expensesQuery->where('zone_id', $selectedZone);
+        }
+
+        $expenses = $expensesQuery->orderBy('expense_date', 'desc')->get();
+        $totalExpenses = $expenses->sum('amount');
+
+        // 4. صافي الربح/التدفق النقدي
+        $netProfit = $totalIncome - $totalExpenses;
+
+        // تجهيز قوائم الفلتر
+        $months = [
+            1 => 'يناير', 2 => 'فبراير', 3 => 'مارس', 4 => 'أبريل', 5 => 'مايو', 6 => 'يونيو',
+            7 => 'يوليو', 8 => 'أغسطس', 9 => 'سبتمبر', 10 => 'أكتوبر', 11 => 'نوفمبر', 12 => 'ديسمبر'
+        ];
+        $years = range(Carbon::now()->year - 2, Carbon::now()->year + 1);
+        $zones = Zone::pluck('name', 'id')->toArray();
+
+        // 5. تصدير إكسيل (CSV)
+        if ($request->has('export') && $request->export == 'excel') {
+            $filename = "monthly_financials_{$selectedYear}_{$selectedMonth}.csv";
+            $callback = function () use ($payments, $expenses, $selectedMonth, $selectedYear, $months, $totalIncome, $totalExpenses, $netProfit) {
+                $file = fopen('php://output', 'w');
+                // دعم اللغة العربية في ملفات CSV
+                fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+                fputcsv($file, ['التقرير المالي لشهر', $months[(int)$selectedMonth] . ' ' . $selectedYear]);
+                fputcsv($file, []);
+
+                fputcsv($file, ['ملخص الأداء المالي']);
+                fputcsv($file, ['إجمالي الدخل', $totalIncome]);
+                fputcsv($file, ['إجمالي المصروفات', $totalExpenses]);
+                fputcsv($file, ['صافي التدفق النقدي', $netProfit]);
+                fputcsv($file, []);
+
+                fputcsv($file, ['تفاصيل التحصيلات (الدخل)']);
+                fputcsv($file, ['التاريخ', 'رقم الفاتورة', 'العميل', 'المبلغ']);
+                foreach ($payments as $payment) {
+                    fputcsv($file, [
+                        $payment->payment_date->format('Y-m-d'),
+                        $payment->invoice->serial_number ?? $payment->invoice_id,
+                        $payment->invoice->pharmacist->name ?? '-',
+                        $payment->amount
+                    ]);
+                }
+                fputcsv($file, []);
+
+                fputcsv($file, ['تفاصيل المصروفات (النثريات)']);
+                fputcsv($file, ['التاريخ', 'المنطقة', 'البيان', 'المبلغ']);
+                foreach ($expenses as $expense) {
+                    fputcsv($file, [
+                        \Carbon\Carbon::parse($expense->expense_date)->format('Y-m-d'),
+                        $expense->zone->name ?? '-',
+                        $expense->description,
+                        $expense->amount
+                    ]);
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, [
+                "Content-Type" => "text/csv",
+                "Content-Disposition" => "attachment; filename=$filename",
+                "Pragma" => "no-cache",
+                "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+                "Expires" => "0"
+            ]);
+        }
+
+        return view('admin.reports.monthly_financials', compact(
+            'selectedMonth', 'selectedYear', 'months', 'years', 'zones', 'selectedZone',
+            'payments', 'totalIncome',
+            'expenses', 'totalExpenses',
+            'netProfit', 'startDate', 'endDate'
+        ));
     }
 }

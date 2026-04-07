@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Center;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\InvoicePayment;
 use App\Models\Pharmacist;
 use App\Models\Doctor;
 use App\Models\Drug;
@@ -73,7 +74,6 @@ class InvoiceController extends Controller
                     default => '-'
                 };
 
-                // تجميع أسماء الأطباء في نص واحد مفصول بفاصلة
                 $doctorsNames = $invoice->doctors->pluck('name')->implode(' - ') ?: '-';
 
                 fputcsv($file, [
@@ -135,13 +135,14 @@ class InvoiceController extends Controller
                 'total_amount' => 0, 'total_discount' => 0, 'final_total' => 0, 'paid_amount' => 0, 'remaining_amount' => 0,
             ]);
 
-            // ربط الأطباء المختارين بالفاتورة
             if ($request->has('doctor_ids') && is_array($request->doctor_ids)) {
                 $invoice->doctors()->sync($request->doctor_ids);
             }
 
             $totals = $this->processInvoiceItems($invoice, $request->items, $warehouse, 'deduct');
-            $this->updateInvoiceTotals($invoice, $totals, $request->status, $request->paid_amount);
+            $this->updateInvoiceTotals($invoice, $totals, $request->status, $request->paid_amount, true);
+
+            $invoice->refresh();
 
             if ($invoice->status == 1 && $invoice->doctors()->count() > 0) {
                 $invoice->load(['details', 'doctors']);
@@ -193,7 +194,6 @@ class InvoiceController extends Controller
                 $this->updateWarehouseStock($oldWarehouse, $detail->drug_id, $detail->quantity, 'add');
             }
 
-            // التراجع عن التارجت المضاف سابقاً للأطباء
             if ($invoice->status == 1 && $invoice->doctors()->count() > 0) {
                 $this->processDoctorDealImpact($invoice, 'decrement');
             }
@@ -212,16 +212,15 @@ class InvoiceController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            // تحديث الأطباء المربوطين
             $invoice->doctors()->sync($request->doctor_ids ?? []);
 
             $invoice->details()->delete();
             $totals = $this->processInvoiceItems($invoice, $request->items, $newWarehouse, 'deduct');
-            $this->updateInvoiceTotals($invoice, $totals, $request->status, $request->paid_amount);
+            $this->updateInvoiceTotals($invoice, $totals, $request->status, $request->paid_amount, false);
 
+            $invoice->refresh();
             $invoice->load(['details', 'doctors']);
 
-            // إضافة التارجت الجديد
             if ($invoice->status == 1 && $invoice->doctors()->count() > 0) {
                 $this->processDoctorDealImpact($invoice, 'increment');
             }
@@ -252,7 +251,7 @@ class InvoiceController extends Controller
             }
             $invoice->details()->delete();
             $invoice->doctors()->detach();
-            $invoice->delete();
+            $invoice->delete(); // Payments will cascade delete automatically
             DB::commit();
             return redirect()->route('admin.invoices.index')->with(['success' => 'تم حذف الفاتورة']);
         } catch (\Exception $e) {
@@ -282,11 +281,127 @@ class InvoiceController extends Controller
         return $pdf->stream('invoice_' . $invoice->id . '.pdf');
     }
 
+    // ==========================================
+    // إدارة سداد الدفعات (Payments Management)
+    // ==========================================
+
+    public function payments(Invoice $invoice)
+    {
+        $invoice->load(['payments' => function($q) {
+            $q->orderBy('payment_date', 'desc');
+        }, 'pharmacist']);
+        return view('admin.invoices.payments', compact('invoice'));
+    }
+
+    public function storePayment(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01|max:' . $invoice->remaining_amount,
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        $wasFullyPaid = ($invoice->status == 1);
+
+        DB::beginTransaction();
+        try {
+            $invoice->payments()->create([
+                'amount' => $request->amount,
+                'payment_date' => $request->payment_date,
+                'notes' => $request->notes
+            ]);
+
+            $this->recalculateInvoicePayments($invoice, $wasFullyPaid, true);
+            DB::commit();
+            return redirect()->back()->with('success', 'تم إضافة الدفعة بنجاح.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
+    public function updatePayment(Request $request, Invoice $invoice, InvoicePayment $payment)
+    {
+        // السماح بالتعديل بحيث لا يتجاوز إجمالي الفاتورة
+        $maxAllowed = $payment->amount + $invoice->remaining_amount;
+
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01|max:' . $maxAllowed,
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        $wasFullyPaid = ($invoice->status == 1);
+
+        DB::beginTransaction();
+        try {
+            $payment->update([
+                'amount' => $request->amount,
+                'payment_date' => $request->payment_date,
+                'notes' => $request->notes
+            ]);
+
+            $this->recalculateInvoicePayments($invoice, $wasFullyPaid, true);
+            DB::commit();
+            return redirect()->back()->with('success', 'تم تعديل الدفعة بنجاح.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
+    public function destroyPayment(Invoice $invoice, InvoicePayment $payment)
+    {
+        $wasFullyPaid = ($invoice->status == 1);
+
+        DB::beginTransaction();
+        try {
+            $payment->delete();
+            $this->recalculateInvoicePayments($invoice, $wasFullyPaid, true);
+            DB::commit();
+            return redirect()->back()->with('success', 'تم حذف الدفعة بنجاح.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
     /**
-     * Build the shared pharmacists data-structure used by create() and edit().
-     * Loads centers + active non-archived deals with their doctor and drugs
-     * in a single eager-loaded query, then maps to a plain array for the view.
+     * حساب إجماليات الدفعات وتحديث التارجت للطبيب بناءً على التغير في الدفع
      */
+    private function recalculateInvoicePayments(Invoice $invoice, $wasFullyPaid, $triggerDeals = true)
+    {
+        $totalPaid = $invoice->payments()->sum('amount');
+        $remaining = max(0, $invoice->final_total - $totalPaid);
+
+        $newStatus = 2; // آجل
+        if ($remaining <= 0) {
+            $newStatus = 1; // خالص
+        } elseif ($totalPaid > 0) {
+            $newStatus = 3; // جزئي
+        }
+
+        $invoice->update([
+            'paid_amount' => $totalPaid,
+            'remaining_amount' => $remaining,
+            'status' => $newStatus
+        ]);
+
+        // إذا تم تحصيل الفاتورة بالكامل للتو، نضيفها للتارجت. وإذا تم إلغاء دفعها نخصمها من التارجت.
+        if ($triggerDeals) {
+            if (!$wasFullyPaid && $newStatus == 1 && $invoice->doctors()->count() > 0) {
+                $invoice->load(['details', 'doctors']);
+                $this->processDoctorDealImpact($invoice, 'increment');
+            } elseif ($wasFullyPaid && $newStatus != 1 && $invoice->doctors()->count() > 0) {
+                $this->processDoctorDealImpact($invoice, 'decrement');
+            }
+        }
+    }
+
+    // ==========================================
+    // دوال المساعدة الداخلية
+    // ==========================================
+
     private function getPharmacistsForForm(): \Illuminate\Support\Collection
     {
         return Pharmacist::with([
@@ -304,26 +419,26 @@ class InvoiceController extends Controller
                 'province_id' => $ph->center->province_id,
             ] : null,
             'deals'     => $ph->deals
-                ->map(function ($deal) {
-                    if ($deal->is_archived || !$deal->doctor) return null;
+        ->map(function ($deal) {
+            if ($deal->is_archived || !$deal->doctor) return null;
 
-                    $isComplete = $deal->target_amount > 0
-                        && $deal->achieved_amount >= $deal->target_amount;
+            $isComplete = $deal->target_amount > 0
+                && $deal->achieved_amount >= $deal->target_amount;
 
-                    return [
-                        'id'         => $deal->id,
-                        'drugs'      => $deal->drugs->pluck('id')->toArray(),
-                        'is_general' => $deal->drugs->isEmpty(),
-                        'doctor'     => [
-                            'id'              => $deal->doctor->id,
-                            'name'            => $deal->doctor->name . ($isComplete ? ' (مكتمل)' : ''),
-                            'speciality'      => $deal->doctor->speciality,
-                            'commission_rate' => $deal->commission_percentage,
-                        ],
-                    ];
-                })
-                ->filter()
-                ->values(),
+            return [
+                'id'         => $deal->id,
+                'drugs'      => $deal->drugs->pluck('id')->toArray(),
+                'is_general' => $deal->drugs->isEmpty(),
+                'doctor'     => [
+                    'id'              => $deal->doctor->id,
+                    'name'            => $deal->doctor->name . ($isComplete ? ' (مكتمل)' : ''),
+                    'speciality'      => $deal->doctor->speciality,
+                    'commission_rate' => $deal->commission_percentage,
+                ],
+            ];
+        })
+        ->filter()
+        ->values(),
         ]);
     }
 
@@ -360,7 +475,6 @@ class InvoiceController extends Controller
             $query->where('pharmacist_id', $request->pharmacist_id);
         }
         if ($request->filled('doctor_id')) {
-            // الفلترة هنا للبحث داخل العلاقة المتعددة
             $query->whereHas('doctors', function ($q) use ($request) {
                 $q->where('doctors.id', $request->doctor_id);
             });
@@ -379,7 +493,7 @@ class InvoiceController extends Controller
             'invoice_date' => 'required|date',
             'line' => 'required|in:1,2',
             'pharmacist_id' => 'required|exists:pharmacists,id',
-            'doctor_ids' => 'nullable|array', // تعديل لاستقبال مصفوفة أطباء
+            'doctor_ids' => 'nullable|array',
             'doctor_ids.*' => 'exists:doctors,id',
             'status' => 'required|in:1,2,3',
             'paid_amount' => 'nullable|numeric|min:0',
@@ -436,9 +550,6 @@ class InvoiceController extends Controller
 
     private function processDoctorDealImpact(Invoice $invoice, $operation)
     {
-        // ==========================================
-        // DECREMENT LOGIC
-        // ==========================================
         if ($operation === 'decrement') {
             $attachedDeals = $invoice->deals;
 
@@ -452,16 +563,11 @@ class InvoiceController extends Controller
             return;
         }
 
-        // ==========================================
-        // INCREMENT LOGIC (For Multiple Doctors)
-        // ==========================================
         $invoiceDate = $invoice->invoice_date ?? $invoice->created_at;
 
-        // استخراج جميع الأطباء المربوطين بالفاتورة
         $doctorIds = $invoice->doctors->pluck('id')->toArray();
         if (empty($doctorIds)) return;
 
-        // إيجاد الاتفاقيات السارية الخاصة بهؤلاء الأطباء
         $deals = DoctorDeal::with('drugs')
             ->whereIn('doctor_id', $doctorIds)
             ->where('is_active', true)
@@ -478,13 +584,11 @@ class InvoiceController extends Controller
 
         if ($deals->isEmpty()) return;
 
-        // تطبيق التارجت كاملاً لكل دكتور حسب أدويته
         foreach ($deals as $deal) {
             $includedDrugIds = $deal->drugs->pluck('id')->toArray();
             $dealContribution = 0;
 
             foreach ($invoice->details as $detail) {
-                // الدواء موجود ضمن الاتفاق
                 if ( in_array($detail->drug_id, $includedDrugIds)) {
                     $dealContribution += $detail->unit_price * $detail->quantity;
                 }
@@ -499,10 +603,27 @@ class InvoiceController extends Controller
         }
     }
 
-    private function updateInvoiceTotals(Invoice $invoice, array $totals, $status, $inputPaid)
+    private function updateInvoiceTotals(Invoice $invoice, array $totals, $status, $inputPaid, $isNew = false)
     {
         $final = $totals['total'] - $totals['discount'];
-        $paid = ($status == 1) ? $final : (($status == 3) ? min($inputPaid, $final) : 0);
-        $invoice->update(['total_amount' => $totals['total'], 'total_discount' => $totals['discount'], 'final_total' => $final, 'paid_amount' => $paid, 'remaining_amount' => $final - $paid]);
+
+        $invoice->update([
+            'total_amount' => $totals['total'],
+            'total_discount' => $totals['discount'],
+            'final_total' => $final,
+        ]);
+
+        if ($isNew) {
+            $paid = ($status == 1) ? $final : (($status == 3) ? min($inputPaid, $final) : 0);
+            if ($paid > 0) {
+                $invoice->payments()->create([
+                    'amount' => $paid,
+                    'payment_date' => $invoice->invoice_date,
+                    'notes' => 'دفعة مقدمة عند إنشاء الفاتورة'
+                ]);
+            }
+        }
+
+        $this->recalculateInvoicePayments($invoice, false, false);
     }
 }

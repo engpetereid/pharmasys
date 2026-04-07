@@ -73,6 +73,10 @@ class DoctorDealController extends Controller
         // جلب الإحصائيات بعد تطبيق الفلاتر وقبل التقسيم (Pagination)
         $stats = $this->calculateDealStats($query);
 
+        if ($request->has('export') && $request->export == 'excel') {
+            return $this->exportDeals($query->get(), $stats, 'active_deals', 'الاتفاقات الجارية');
+        }
+
         $zones = Zone::where('line', 1)->get();
         $deals = $query->latest()->paginate(12);
         $deals->appends($request->all());
@@ -88,11 +92,87 @@ class DoctorDealController extends Controller
         // جلب الإحصائيات لصفحة الأرشيف بنفس طريقة الفلترة
         $stats = $this->calculateDealStats($query);
 
+        if ($request->has('export') && $request->export == 'excel') {
+            return $this->exportDeals($query->get(), $stats, 'archived_deals', 'أرشيف الاتفاقات');
+        }
+
         $zones = Zone::where('line', 1)->get();
         $deals = $query->latest()->paginate(12);
         $deals->appends($request->all());
 
         return view('admin.deals.index', compact('deals', 'zones', 'stats'));
+    }
+
+    /**
+     * دالة لتصدير الاتفاقات إلى ملف إكسيل (CSV)
+     */
+    private function exportDeals($deals, $stats, $filenamePrefix, $title)
+    {
+        $filename = $filenamePrefix . "_" . date('Y-m-d') . ".csv";
+
+        $callback = function () use ($deals, $stats, $title) {
+            $file = fopen('php://output', 'w');
+            // دعم اللغة العربية
+            fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, ['تقرير', $title]);
+            fputcsv($file, []);
+
+            // إضافة ملخص الإحصائيات في بداية الملف
+            fputcsv($file, ['ملخص الإحصائيات بناءً على الفلتر المختار']);
+            fputcsv($file, ['إجمالي التارجت المطلوب', $stats['total_target']]);
+            fputcsv($file, ['إجمالي المبيعات المحققة', $stats['total_achieved']]);
+            fputcsv($file, ['إجمالي العمولة المستحقة', $stats['total_commission']]);
+            fputcsv($file, ['إجمالي المدفوع للأطباء', $stats['total_paid']]);
+            fputcsv($file, ['إجمالي العمولات المتبقية', $stats['total_remaining']]);
+            fputcsv($file, []);
+
+            // ترويسة الجدول
+            fputcsv($file, [
+                'الطبيب', 'الصيدليات המشمولة', 'تاريخ البدء', 'حالة الاتفاق', 'التارجت المطلوب', 'المبيعات المحققة',
+                'نسبة العمولة %', 'العمولة المستحقة', 'المدفوع', 'المتبقي', 'حالة الدفع'
+            ]);
+
+            foreach ($deals as $deal) {
+                $statusText = match ((int)$deal->status) {
+                    1 => 'خالص',
+                    2 => 'آجل',
+                    3 => 'جزئي',
+                    default => '-'
+                };
+
+                $isOpenDeal = ($deal->target_amount <= 0);
+                $commission = $isOpenDeal
+                    ? ($deal->achieved_amount * ($deal->commission_percentage / 100))
+                    : $deal->commission_amount;
+
+                $remaining = max(0, $commission - $deal->paid_amount);
+                $activeStatus = $deal->is_active ? 'ساري' : 'موقوف مؤقتاً';
+
+                fputcsv($file, [
+                    $deal->doctor->name ?? '-',
+                    $deal->pharmacists->pluck('name')->implode(' - '),
+                    $deal->start_date,
+                    $activeStatus,
+                    $isOpenDeal ? 'مفتوح' : $deal->target_amount,
+                    $deal->achieved_amount,
+                    $deal->commission_percentage . '%',
+                    $commission,
+                    $deal->paid_amount,
+                    $remaining,
+                    $statusText
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            "Content-Type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ]);
     }
 
     public function create()
@@ -283,7 +363,7 @@ class DoctorDealController extends Controller
             $invContribution = 0;
             foreach ($inv->details as $detail) {
                 if ($isGeneralDeal || in_array($detail->drug_id, $dealDrugIds)) {
-                    $invContribution += $detail->unit_price * $detail->quantity;;
+                    $invContribution += $detail->row_total;
                 }
             }
 

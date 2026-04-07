@@ -80,6 +80,14 @@
                     <span class="menu-title">تقرير نسبة الجهاز</span>
                 </a>
             </li>
+
+            <li class="nav-item {{ request()->routeIs('admin.reports.monthly_financials') ? 'active' : '' }}">
+                <a href="{{ route('admin.monthly_financials') }}">
+                    <i class="la la-pie-chart"></i>
+                    <span class="menu-title">الملخص المالى</span>
+                </a>
+            </li>
+
             <li class="nav-item {{ request()->routeIs('admin.reports.doctors_balance') ? 'active' : '' }}">
                 <a href="{{ route('admin.reports.doctors_balance') }}">
                     <i class="la la-balance-scale"></i>

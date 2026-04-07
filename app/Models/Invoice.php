@@ -43,6 +43,11 @@ class Invoice extends Model
 //    {
 //        return $this->belongsTo(Doctor::class);
 //    }
+
+    public function payments()
+    {
+        return $this->hasMany(InvoicePayment::class);
+    }
     public function doctors()
     {
         return $this->belongsToMany(Doctor::class, 'doctor_invoice');
