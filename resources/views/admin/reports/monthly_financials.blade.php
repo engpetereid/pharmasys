@@ -30,7 +30,7 @@
         <div class="content-wrapper">
             <div class="content-header row mb-2 no-print">
                 <div class="content-header-left col-md-8 col-12">
-                    <h3 class="content-header-title"> <i class="la la-bar-chart"></i> الملخص المالي الشهري (Cash Flow) </h3>
+                    <h3 class="content-header-title"> <i class="la la-bar-chart"></i> الملخص المالي الشهري  </h3>
                     <div class="row breadcrumbs-top">
                         <div class="breadcrumb-wrapper col-12">
                             <ol class="breadcrumb">
@@ -143,7 +143,7 @@
                         <div class="card stat-card {{ $netProfit >= 0 ? 'bg-gradient-x-info' : 'bg-gradient-x-warning' }} box-shadow-1">
                             <div class="card-body">
                                 <div>
-                                    <span>صافي التدفق النقدي (الرصيد)</span>
+                                    <span>الصافي</span>
                                     <h3>{{ number_format($netProfit, 2) }}</h3>
                                 </div>
                                 <i class="la la-balance-scale text-white"></i>
@@ -210,7 +210,7 @@
                     <div class="col-xl-6 col-lg-12">
                         <div class="card border-top-danger border-top-3">
                             <div class="card-header pb-0">
-                                <h4 class="card-title text-danger"><i class="la la-minus-circle"></i> تفاصيل المصروفات (النثريات)</h4>
+                                <h4 class="card-title text-danger"><i class="la la-minus-circle"></i> تفاصيل المصروفات </h4>
                                 <p class="font-small-3 text-muted mt-1">مصروفات وعمولات الأطباء التي تم صرفها خلال هذا الشهر.</p>
                             </div>
                             <div class="card-content">
