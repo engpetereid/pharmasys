@@ -18,6 +18,7 @@
         .table th { border-top: none; background-color: #F5F7FA; color: #555; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
         .table td { vertical-align: middle; }
         .invoice-serial { font-family: 'Courier New', Courier, monospace; font-weight: bold; letter-spacing: 1px; }
+        .table-responsive { min-height: 280px; overflow: visible !important; }
 
         .print-header { display: none; }
 

@@ -342,7 +342,7 @@
 
                                             <div class="mt-3">
                                                 <label class="font-weight-bold">حالة الدفع</label>
-                                                <select name="status" class="mb-2 form-control" x-model="payment_status" disabled
+                                                <select name="status" class="mb-2 form-control" x-model="payment_status"
                                                         @change="updatePaymentStatus()">
                                                     <option value="2">آجل (Deferred)</option>
                                                     <option value="1">مدفوع بالكامل (Paid)</option>
