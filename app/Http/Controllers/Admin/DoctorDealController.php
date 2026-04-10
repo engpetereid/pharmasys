@@ -363,7 +363,7 @@ class DoctorDealController extends Controller
             $invContribution = 0;
             foreach ($inv->details as $detail) {
                 if ($isGeneralDeal || in_array($detail->drug_id, $dealDrugIds)) {
-                    $invContribution += $detail->row_total;
+                    $invContribution += $detail->unit_price*$detail->quantity;
                 }
             }
 
