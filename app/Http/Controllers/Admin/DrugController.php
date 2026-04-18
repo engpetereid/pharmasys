@@ -59,25 +59,45 @@ class DrugController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Drug $drug)
+    public function show(Request $request, Drug $drug)
     {
-        // 1. جلب سجل المبيعات (التفاصيل) مع بيانات الفاتورة
-        $salesHistory = \App\Models\InvoiceDetail::where('drug_id', $drug->id)
-            ->with(['invoice.pharmacist', 'invoice.representative']) // بيانات الفاتورة والصيدلي والمندوب
-            ->latest()
-            ->paginate(15);
+        // جلب جميع المناطق لقائمة الفلتر
+        $zones = \App\Models\Zone::all();
 
-        // 2. حساب الإحصائيات
-        $totalQuantitySold = \App\Models\InvoiceDetail::where('drug_id', $drug->id)->sum('quantity');
-        $totalRevenue = \App\Models\InvoiceDetail::where('drug_id', $drug->id)->sum('row_total');
-        $invoicesCount = \App\Models\InvoiceDetail::where('drug_id', $drug->id)->count(); // عدد الفواتير التي ظهر فيها
+        // 1. بناء الاستعلام مع تطبيق فلاتر (التاريخ، المنطقة) على الفاتورة المرتبطة
+        $query = \App\Models\InvoiceDetail::where('drug_id', $drug->id)
+            ->whereHas('invoice', function ($invoiceQuery) use ($request) {
+                if ($request->filled('start_date')) {
+                    $invoiceQuery->whereDate('invoice_date', '>=', $request->start_date);
+                }
+                if ($request->filled('end_date')) {
+                    $invoiceQuery->whereDate('invoice_date', '<=', $request->end_date);
+                }
+                if ($request->filled('zone_id')) {
+                    $invoiceQuery->whereHas('pharmacist.center.zones', function ($zoneQuery) use ($request) {
+                        $zoneQuery->where('zones.id', $request->zone_id);
+                    });
+                }
+            });
+
+        // 2. حساب الإحصائيات (الآن تحسب بناءً على الفلتر المطبق)
+        $totalQuantitySold = (clone $query)->sum('quantity');
+        $totalRevenue = (clone $query)->sum('row_total');
+        $invoicesCount = (clone $query)->count(); // عدد الفواتير التي ظهر فيها
+
+        // 3. جلب سجل المبيعات (التفاصيل) وعرضها مع الحفاظ على الفلتر في صفحات (Pagination)
+        $salesHistory = $query->with(['invoice.pharmacist', 'invoice.representative'])
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.drugs.show', compact(
             'drug',
             'salesHistory',
             'totalQuantitySold',
             'totalRevenue',
-            'invoicesCount'
+            'invoicesCount',
+            'zones'
         ));
     }
 

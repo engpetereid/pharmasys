@@ -22,7 +22,10 @@ class WarehouseController extends Controller
         return view('admin.warehouses.index', compact('warehouses'));
     }
 
-
+    public function create(){
+        $mainWarehouses = Warehouse::where('type', 'main')->get();
+        return view('admin.warehouses.create')->with('mainWarehouses', $mainWarehouses);
+    }
     public function store(Request $request)
     {
         $request->validate([

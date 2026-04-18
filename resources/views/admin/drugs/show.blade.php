@@ -27,6 +27,38 @@
 
             <div class="content-body">
 
+                {{-- فلتر البحث --}}
+                <div class="card filter-card box-shadow-1 border-top-info border-top-3 mb-2 no-print">
+                    <div class="card-body py-2">
+                        <form action="{{ route('admin.drugs.show', $drug->id) }}" method="GET" id="searchForm">
+                            <div class="row align-items-end">
+                                <div class="col-md-3 mb-1">
+                                    <label class="text-muted font-small-3">من تاريخ</label>
+                                    <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                                </div>
+                                <div class="col-md-3 mb-1">
+                                    <label class="text-muted font-small-3">إلى تاريخ</label>
+                                    <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                                </div>
+                                <div class="col-md-4 mb-1">
+                                    <label class="text-muted font-small-3">المنطقة (Zone)</label>
+                                    <select name="zone_id" class="form-control select2">
+                                        <option value="">-- كل المناطق --</option>
+                                        @foreach($zones as $zone)
+                                            <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                                                {{ $zone->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-1 d-flex">
+                                    <button type="submit" class="btn btn-primary flex-grow-1 mr-1" title="تصفية"><i class="ft-filter"></i></button>
+                                    <a href="{{ route('admin.drugs.show', $drug->id) }}" class="btn btn-outline-secondary" title="إلغاء الفلتر"><i class="ft-x"></i></a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
                 <div class="row">
                     <div class="col-xl-3 col-md-6 col-12">
                         <div class="card border-top-primary border-top-3 text-center">
@@ -75,7 +107,7 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">
-                                <h4 class="card-title">سجل حركة المبيعات (Invoices History)</h4>
+                                <h4 class="card-title">سجل حركة المبيعات </h4>
                             </div>
                             <div class="card-content collapse show">
                                 <div class="card-body">

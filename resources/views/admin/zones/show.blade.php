@@ -134,11 +134,14 @@
                     <div class="col-12">
                         <div class="card border-top-danger border-top-3">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h4 class="card-title"> <i class="la la-money"></i> مصروفات ونثريات المنطقة</h4>
+                                <h4 class="card-title"> <i class="la la-money"></i> مصروفات المنطقة</h4>
                                 <div>
                                     <span class="badge badge-danger mr-1" style="font-size: 1rem;">
                                         الإجمالي: {{ number_format($zone->expenses->sum('amount'), 2) }}
                                     </span>
+                                    <a href="{{ route('admin.zones.show', ['zone' => $zone->id, 'export' => 'excel']) }}" class="btn btn-success btn-sm mr-1">
+                                        <i class="la la-file-excel-o"></i> تصدير إكسيل
+                                    </a>
                                     <a href="{{ route('admin.zones.expenses.create', $zone->id) }}" class="btn btn-primary btn-sm">
                                         <i class="ft-plus"></i> إضافة مصروف جديد
                                     </a>

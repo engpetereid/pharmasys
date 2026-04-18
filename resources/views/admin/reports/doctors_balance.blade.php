@@ -58,9 +58,9 @@
 
 @section('content')
     <div class="app-content content">
-            <div class="content-wrapper">
-                <div class="print-header-wrapper ">
-                    <div class="print-header">
+        <div class="content-wrapper">
+            <div class="print-header-wrapper ">
+                <div class="print-header">
                     <h2>تقرير الأرصدة المالية للأطباء</h2>
                     <p>تاريخ الطباعة: {{ date('Y-m-d H:i') }}</p>
                 </div>
@@ -109,7 +109,10 @@
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <button class="btn btn-primary btn-block" type="submit"> <i class="ft-search"></i> بحث</button>
+                                    <div class="btn-group w-100">
+                                        <button class="btn btn-primary" type="submit"> <i class="ft-search"></i> بحث</button>
+                                        <button class="btn btn-success" type="submit" name="export" value="excel"> <i class="la la-file-excel-o"></i> إكسيل</button>
+                                    </div>
                                 </div>
                             </div>
                         </form>
@@ -131,7 +134,7 @@
                                     <tr>
                                         <th>الطبيب</th>
                                         <th>المركز</th>
-                                        <th>إجمالي العمولات</th>
+                                        <th>إجمالي المبيعات</th>
                                         <th>مسحوبات / مقدمات</th>
                                         <th class="bg-white">الرصيد الصافي</th>
                                         <th class="no-print">الإجراء</th>
