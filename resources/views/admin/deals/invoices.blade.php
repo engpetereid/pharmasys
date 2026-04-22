@@ -39,6 +39,9 @@
                     </div>
                 </div>
                 <div class="col-md-4 col-12 text-right">
+                    <a href="{{ route('admin.deals.invoices', ['deal' => $deal->id, 'export' => 'excel']) }}" class="btn btn-success box-shadow-2 mr-1">
+                        <i class="la la-file-excel-o"></i> تصدير إكسيل
+                    </a>
                     <button onclick="window.print()" class="btn btn-secondary box-shadow-2">
                         <i class="ft-printer"></i> طباعة التقرير
                     </button>

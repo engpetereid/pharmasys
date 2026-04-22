@@ -334,19 +334,17 @@ class DoctorDealController extends Controller
         return redirect()->back()->with(['success' => 'تم تسوية الاتفاق ودفع المبلغ المتبقي للدكتور.']);
     }
 
-    public function showInvoices(DoctorDeal $deal)
+    public function showInvoices(Request $request, DoctorDeal $deal)
     {
-        $paidInvoices = $deal->invoices()
-            ->with(['representative', 'medicalRepresentative', 'pharmacist', 'details'])
-            ->latest()
-            ->paginate(15);
+        $paidInvoicesQuery = $deal->invoices()
+            ->with(['representative', 'medicalRepresentative', 'pharmacist', 'details.drug']);
 
         $dealDrugIds = $deal->drugs->pluck('id')->toArray();
         $isGeneralDeal = empty($dealDrugIds);
 
         $pharmacistIds = $deal->pharmacists->pluck('id')->toArray();
 
-        $unpaidQuery = \App\Models\Invoice::with(['representative', 'pharmacist', 'details'])
+        $unpaidQuery = \App\Models\Invoice::with(['representative', 'pharmacist', 'details.drug'])
             ->whereHas('doctors', function($q) use ($deal) {
                 $q->where('doctors.id', $deal->doctor_id);
             })
@@ -376,6 +374,13 @@ class DoctorDealController extends Controller
 
         $potentialCommission = $unpaidTotalContribution * ($deal->commission_percentage / 100);
 
+        if ($request->has('export') && $request->export == 'excel') {
+            $paidInvoicesAll = $paidInvoicesQuery->latest()->get();
+            return $this->exportDealInvoices($deal, $paidInvoicesAll, $unpaidInvoicesList, $unpaidTotalContribution, $potentialCommission);
+        }
+
+        $paidInvoices = $paidInvoicesQuery->latest()->paginate(15);
+
         return view('admin.deals.invoices', compact(
             'deal',
             'paidInvoices',
@@ -385,6 +390,88 @@ class DoctorDealController extends Controller
             'dealDrugIds',
             'isGeneralDeal'
         ));
+    }
+
+    /**
+     * دالة مساعدة لتصدير فواتير التارجت (المدفوعة والمنتظرة) لملف Excel
+     */
+    private function exportDealInvoices($deal, $paidInvoices, $unpaidInvoicesList, $unpaidTotalContribution, $potentialCommission)
+    {
+        $filename = "deal_invoices_" . date('Y-m-d') . ".csv";
+
+        $callback = function () use ($deal, $paidInvoices, $unpaidInvoicesList, $unpaidTotalContribution, $potentialCommission) {
+            $file = fopen('php://output', 'w');
+
+            // إضافة BOM لدعم اللغة العربية في Excel
+            fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, ['تقرير فواتير التارجت']);
+            fputcsv($file, ['الطبيب:', $deal->doctor->name ?? '-']);
+            fputcsv($file, ['الهدف (Target):', $deal->target_amount, 'المحقق (تم تحصيله):', $deal->achieved_amount]);
+            fputcsv($file, []);
+
+            // الجدول الأول: الفواتير المكتملة
+            fputcsv($file, ['--- الفواتير المكتملة والمحصلة (تم احتسابها في التارجت) ---']);
+            fputcsv($file, ['رقم الفاتورة', 'التاريخ', 'الصيدلية', 'الأدوية', 'القيمة المحتسبة (للاتفاق)']);
+
+            foreach ($paidInvoices as $invoice) {
+                $drugsList = [];
+                foreach ($invoice->details as $detail) {
+                    $drugName = $detail->drug->name ?? 'صنف غير معروف';
+                    $drugsList[] = "$drugName ({$detail->quantity})";
+                }
+
+                fputcsv($file, [
+                    $invoice->serial_number ?? $invoice->id,
+                    $invoice->invoice_date,
+                    $invoice->pharmacist->name ?? '-',
+                    implode(' | ', $drugsList),
+                    $invoice->pivot->contribution_amount ?? $invoice->final_total
+                ]);
+            }
+
+            fputcsv($file, []);
+
+            // الجدول الثاني: الفواتير الآجلة والجزئية
+            fputcsv($file, ['--- الفواتير الآجلة والجزئية (المنتظرة) ---']);
+            fputcsv($file, ['إجمالي المبيعات المتوقعة للاتفاق:', $unpaidTotalContribution, 'عمولة الطبيب المنتظرة:', $potentialCommission]);
+            fputcsv($file, []);
+
+            fputcsv($file, ['رقم الفاتورة', 'التاريخ', 'الصيدلية', 'الأدوية', 'حالة الفاتورة', 'المنتظر للاتفاق']);
+
+            foreach ($unpaidInvoicesList as $invoice) {
+                $statusText = match ((int)$invoice->status) {
+                    2 => 'آجل',
+                    3 => 'جزئي',
+                    default => '-'
+                };
+
+                $drugsList = [];
+                foreach ($invoice->details as $detail) {
+                    $drugName = $detail->drug->name ?? 'صنف غير معروف';
+                    $drugsList[] = "$drugName ({$detail->quantity})";
+                }
+
+                fputcsv($file, [
+                    $invoice->serial_number ?? $invoice->id,
+                    $invoice->invoice_date,
+                    $invoice->pharmacist->name ?? '-',
+                    implode(' | ', $drugsList),
+                    $statusText,
+                    $invoice->potential_contribution
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            "Content-Type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ]);
     }
 
     public function toggleActive(DoctorDeal $deal)

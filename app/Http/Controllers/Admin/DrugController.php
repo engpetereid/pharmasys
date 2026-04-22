@@ -64,7 +64,7 @@ class DrugController extends Controller
         // جلب جميع المناطق لقائمة الفلتر
         $zones = \App\Models\Zone::all();
 
-        // 1. بناء الاستعلام مع تطبيق فلاتر (التاريخ، المنطقة) على الفاتورة المرتبطة
+        // 1. بناء الاستعلام مع تطبيق فلاتر (التاريخ، المنطقة، حالة الدفع) على الفاتورة المرتبطة
         $query = \App\Models\InvoiceDetail::where('drug_id', $drug->id)
             ->whereHas('invoice', function ($invoiceQuery) use ($request) {
                 if ($request->filled('start_date')) {
@@ -78,14 +78,23 @@ class DrugController extends Controller
                         $zoneQuery->where('zones.id', $request->zone_id);
                     });
                 }
+                if ($request->filled('status')) {
+                    $invoiceQuery->where('status', $request->status);
+                }
             });
 
-        // 2. حساب الإحصائيات (الآن تحسب بناءً على الفلتر المطبق)
+        // 2. حساب الإحصائيات (تحسب بناءً على الفلتر المطبق)
         $totalQuantitySold = (clone $query)->sum('quantity');
         $totalRevenue = (clone $query)->sum('row_total');
         $invoicesCount = (clone $query)->count(); // عدد الفواتير التي ظهر فيها
 
-        // 3. جلب سجل المبيعات (التفاصيل) وعرضها مع الحفاظ على الفلتر في صفحات (Pagination)
+        // 3. تصدير إكسيل
+        if ($request->has('export') && $request->export == 'excel') {
+            $exportData = (clone $query)->with(['invoice.pharmacist', 'invoice.representative'])->latest()->get();
+            return $this->exportExcel($exportData, $drug, $totalQuantitySold, $totalRevenue);
+        }
+
+        // 4. جلب سجل المبيعات (التفاصيل) وعرضها
         $salesHistory = $query->with(['invoice.pharmacist', 'invoice.representative'])
             ->latest()
             ->paginate(15)
@@ -99,6 +108,58 @@ class DrugController extends Controller
             'invoicesCount',
             'zones'
         ));
+    }
+
+    /**
+     * دالة مساعدة لتصدير التقرير
+     */
+    private function exportExcel($data, $drug, $totalQty, $totalRev)
+    {
+        $filename = "drug_report_{$drug->id}_" . date('Y-m-d') . ".csv";
+
+        $callback = function () use ($data, $drug, $totalQty, $totalRev) {
+            $file = fopen('php://output', 'w');
+
+            // إضافة BOM لدعم اللغة العربية في Excel
+            fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, ['تقرير صنف:', $drug->name]);
+            fputcsv($file, ['إجمالي الكمية المباعة:', $totalQty]);
+            fputcsv($file, ['إجمالي الإيرادات:', number_format($totalRev, 2) . ' ج.م']);
+            fputcsv($file, []);
+
+            // ترويسة الجدول
+            fputcsv($file, ['رقم الفاتورة', 'التاريخ', 'الصيدلية', 'المندوب', 'الكمية', 'سعر البيع', 'الإجمالي', 'حالة الفاتورة']);
+
+            foreach ($data as $detail) {
+                $statusText = match ((int)($detail->invoice->status ?? 0)) {
+                    1 => 'مدفوع',
+                    2 => 'آجل',
+                    3 => 'جزئي',
+                    default => '-'
+                };
+
+                fputcsv($file, [
+                    $detail->invoice->serial_number ?? $detail->invoice_id,
+                    $detail->invoice->invoice_date ?? '-',
+                    $detail->invoice->pharmacist->name ?? '-',
+                    $detail->invoice->representative->name ?? '-',
+                    $detail->quantity,
+                    $detail->unit_price,
+                    $detail->row_total,
+                    $statusText
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            "Content-Type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ]);
     }
 
     /**

@@ -32,15 +32,15 @@
                     <div class="card-body py-2">
                         <form action="{{ route('admin.drugs.show', $drug->id) }}" method="GET" id="searchForm">
                             <div class="row align-items-end">
-                                <div class="col-md-3 mb-1">
+                                <div class="col-md-2 mb-1">
                                     <label class="text-muted font-small-3">من تاريخ</label>
                                     <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
                                 </div>
-                                <div class="col-md-3 mb-1">
+                                <div class="col-md-2 mb-1">
                                     <label class="text-muted font-small-3">إلى تاريخ</label>
                                     <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
                                 </div>
-                                <div class="col-md-4 mb-1">
+                                <div class="col-md-3 mb-1">
                                     <label class="text-muted font-small-3">المنطقة (Zone)</label>
                                     <select name="zone_id" class="form-control select2">
                                         <option value="">-- كل المناطق --</option>
@@ -51,14 +51,25 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-2 mb-1 d-flex">
-                                    <button type="submit" class="btn btn-primary flex-grow-1 mr-1" title="تصفية"><i class="ft-filter"></i></button>
+                                <div class="col-md-2 mb-1">
+                                    <label class="text-muted font-small-3">حالة الدفع</label>
+                                    <select name="status" class="form-control">
+                                        <option value="">-- الكل --</option>
+                                        <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>مدفوع</option>
+                                        <option value="2" {{ request('status') == '2' ? 'selected' : '' }}>آجل</option>
+                                        <option value="3" {{ request('status') == '3' ? 'selected' : '' }}>جزئي</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-1 d-flex">
+                                    <button type="submit" class="btn btn-primary flex-grow-1 mr-1" title="تصفية"><i class="ft-filter"></i> تصفية</button>
+                                    <button type="submit" name="export" value="excel" class="btn btn-success flex-grow-1 mr-1" title="تصدير Excel"><i class="la la-file-excel-o"></i> Excel</button>
                                     <a href="{{ route('admin.drugs.show', $drug->id) }}" class="btn btn-outline-secondary" title="إلغاء الفلتر"><i class="ft-x"></i></a>
                                 </div>
                             </div>
                         </form>
                     </div>
                 </div>
+
                 <div class="row">
                     <div class="col-xl-3 col-md-6 col-12">
                         <div class="card border-top-primary border-top-3 text-center">
@@ -122,13 +133,14 @@
                                                 <th>الكمية</th>
                                                 <th>سعر البيع</th>
                                                 <th>الإجمالي</th>
+                                                <th>الحالة</th>
                                                 <th>عرض</th>
                                             </tr>
                                             </thead>
                                             <tbody>
                                             @forelse($salesHistory as $detail)
                                                 <tr>
-                                                    <td>#{{ $detail->invoice->id }}</td>
+                                                    <td>#{{ $detail->invoice->serial_number ?? $detail->invoice->id }}</td>
                                                     <td>{{ $detail->invoice->invoice_date }}</td>
                                                     <td>{{ $detail->invoice->pharmacist->name ?? '-' }}</td>
                                                     <td>{{ $detail->invoice->representative->name ?? '-' }}</td>
@@ -136,14 +148,23 @@
                                                     <td>{{ number_format($detail->unit_price, 2) }}</td>
                                                     <td class="text-success font-weight-bold">{{ number_format($detail->row_total, 2) }}</td>
                                                     <td>
+                                                        @if($detail->invoice->status == 1)
+                                                            <span class="badge badge-success">مدفوع</span>
+                                                        @elseif($detail->invoice->status == 2)
+                                                            <span class="badge badge-warning">آجل</span>
+                                                        @elseif($detail->invoice->status == 3)
+                                                            <span class="badge badge-info">جزئي</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
                                                         <a href="{{ route('admin.invoices.show', $detail->invoice_id) }}" target="_blank" class="btn btn-sm btn-outline-info">
-                                                            <i class="ft-eye"></i> الفاتورة
+                                                            <i class="ft-eye"></i>
                                                         </a>
                                                     </td>
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="8" class="text-center py-3 text-muted">لم يتم بيع هذا الصنف حتى الآن.</td>
+                                                    <td colspan="9" class="text-center py-3 text-muted">لم يتم بيع هذا الصنف حتى الآن.</td>
                                                 </tr>
                                             @endforelse
                                             </tbody>
